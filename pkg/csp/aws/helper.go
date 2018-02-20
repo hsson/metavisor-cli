@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/brkt/metavisor-cli/pkg/logging"
@@ -11,6 +12,7 @@ import (
 const (
 	idPrefix   = "i-"
 	snapPrefix = "snap-"
+	amiPrefix  = "ami-"
 )
 
 // Amazon Linux AMIs (HVM EBS) collected on Feb 14 2018, from:
@@ -37,6 +39,11 @@ var genericAMIMap = map[string]string{
 	"us-gov-west-1":  "ami-56f87137",
 }
 
+var (
+	// ErrInvalidID is returned if a specified ID is not of correct format
+	ErrInvalidID = errors.New("the specified ID is not of valid format")
+)
+
 // IsInstanceID determines if the specified ID belong to an instance or not
 func IsInstanceID(id string) bool {
 	// TODO: Maybe use regex?
@@ -47,6 +54,12 @@ func IsInstanceID(id string) bool {
 func IsSnapshotID(id string) bool {
 	// TODO: Maybe use regex?
 	return strings.HasPrefix(id, snapPrefix)
+}
+
+// IsAMIID determines if the specified ID belog to an AMI or not
+func IsAMIID(id string) bool {
+	// TODO: Maybe use regex?
+	return strings.HasPrefix(id, amiPrefix)
 }
 
 // IsValidRegion will validate a specified region to make sure it exist in AWS

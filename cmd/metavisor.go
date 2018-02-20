@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/brkt/metavisor-cli/pkg/list"
 	"github.com/brkt/metavisor-cli/pkg/logging"
-	"github.com/brkt/metavisor-cli/pkg/share"
-	"github.com/brkt/metavisor-cli/pkg/version"
+	"github.com/brkt/metavisor-cli/pkg/mv"
+	"github.com/brkt/metavisor-cli/pkg/mv/share"
+	"github.com/brkt/metavisor-cli/pkg/mv/wrap"
 
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -20,6 +20,10 @@ const (
 	envOutputJSON = "MV_OUTPUT_JSON"
 	// Env variable to set default region to use for AWS commands
 	envAWSRegion = "MV_AWS_REGION"
+	// Env variable to set launch token to use for wrapping
+	envLaunchToken = "MV_LAUNCH_TOKEN"
+	// Env variable to set a custom service domain
+	envServiceDomain = "MV_SERVICE_DOMAIN"
 
 	// DefaultShareLogsDir is where MV logs will be stored as default
 	DefaultShareLogsDir = "./"
@@ -32,10 +36,22 @@ var (
 	awsCommand = app.Command("aws", "Perform operations related to AWS")
 
 	// AWS Wrap an instance
-	awsWrapInstance = awsCommand.Command("wrap-instance", "Wrap a running instance with Metavisor")
+	awsWrapInstance        = awsCommand.Command("wrap-instance", "Wrap a running instance with Metavisor")
+	awsWrapInstanceRegion  = awsWrapInstance.Flag("region", fmt.Sprintf("The AWS region to look for the resource in (overrides $%s)", envAWSRegion)).Required().Envar(envAWSRegion).String()
+	awsWrapInstanceToken   = awsWrapInstance.Flag("token", fmt.Sprintf("Launch token used to identify the Metavisor (overrides $%s)", envLaunchToken)).Required().Envar(envLaunchToken).String() // TODO: Make non-required
+	awsWrapInstanceVersion = awsWrapInstance.Flag("metavisor-version", "Which version of the MV to use").PlaceHolder("VERSION").String()
+	awsWrapInstanceAMI     = awsWrapInstance.Flag("metavisor-image", "AMI ID of MV to use, must be in correct region").Hidden().PlaceHolder("AMI-ID").String()
+	awsWrapInstanceDomain  = awsWrapInstance.Flag("service-domain", "Specify which Yeti to talk to").Hidden().PlaceHolder("DOMAIN").Envar(envServiceDomain).String()
+	awsWrapInstanceID      = awsWrapInstance.Arg("ID", "ID of the instance to wrap").Required().String()
 
 	// AWS Wrap an image
-	awsWrapAMI = awsCommand.Command("wrap-ami", "Wrap a regular AMI with Metavisor")
+	awsWrapAMI        = awsCommand.Command("wrap-ami", "Wrap a regular AMI with Metavisor")
+	awsWrapAMIRegion  = awsWrapAMI.Flag("region", fmt.Sprintf("The AWS region to look for the resource in (overrides $%s)", envAWSRegion)).Required().Envar(envAWSRegion).String()
+	awsWrapAMIToken   = awsWrapAMI.Flag("token", fmt.Sprintf("Launch token used to identify the Metavisor (overrides $%s)", envLaunchToken)).Required().Envar(envLaunchToken).String() // TODO: Make non-required
+	awsWrapAMIVersion = awsWrapAMI.Flag("metavisor-version", "Which version of the MV to use").PlaceHolder("VERSION").String()
+	awsWrapAMIAMI     = awsWrapAMI.Flag("metavisor-image", "AMI ID of MV to use, must be in correct region").Hidden().PlaceHolder("AMI-ID").String()
+	awsWrapAMIDomain  = awsWrapAMI.Flag("service-domain", "Specify which Yeti to talk to").Hidden().PlaceHolder("DOMAIN").Envar(envServiceDomain).String()
+	awsWrapAMIID      = awsWrapAMI.Arg("ID", "ID of the instance to wrap").Required().String()
 
 	// AWS Share logs
 	awsShareLogs            = awsCommand.Command("share-logs", "Get the Metavisor logs from an instance or snapshot")
@@ -97,12 +113,12 @@ func main() {
 }
 
 func showVersion() {
-	versionInfo, err := version.GetInfo()
+	versionInfo, err := mv.GetInfo()
 	if err != nil {
 		// Could not fetch MV version. Log to debug and still show CLI version
 		logging.Debug("Could not determine latest MV version, only showing CLI version")
 	}
-	output, err := version.FormatInfo(versionInfo, *versionWithJSON)
+	output, err := mv.FormatInfo(versionInfo, *versionWithJSON)
 	if err != nil {
 		// Could not marshal information to JSON
 		logging.Fatal(ErrGeneric)
@@ -112,13 +128,13 @@ func showVersion() {
 }
 
 func listMetavisors() {
-	mvs, err := list.GetMetavisorVersions()
+	mvs, err := mv.GetMetavisorVersions()
 	if err != nil {
 		// Could not fetch available MV versions
 		logging.Fatal("Could not fetch available MV versions")
 		return
 	}
-	output, err := list.FormatMetavisors(mvs, *listWithJSON)
+	output, err := mv.FormatMetavisors(mvs, *listWithJSON)
 	if err != nil {
 		// Could not marshal versions to JSON
 		logging.Fatal(ErrGeneric)
@@ -128,11 +144,37 @@ func listMetavisors() {
 }
 
 func wrapInstance() {
-	logging.Fatal("Wrap instance not implemented")
+	conf := wrap.Config{
+		Token:            *awsWrapInstanceToken,
+		MetavisorVersion: *awsWrapInstanceVersion,
+		MetavisorAMI:     *awsWrapInstanceAMI,
+		ServiceDomain:    *awsWrapInstanceDomain,
+	}
+	inst, err := wrap.Instance(*awsWrapInstanceRegion, *awsWrapInstanceID, conf)
+	if err != nil {
+		// Could not wrap instance, show error
+		logging.Fatal(err)
+		return
+	}
+	logging.Info("Successfully wrapped instance:")
+	logging.Output(inst)
 }
 
 func wrapAMI() {
-	logging.Fatal("Wrap AMI not implemented")
+	conf := wrap.Config{
+		Token:            *awsWrapAMIToken,
+		MetavisorVersion: *awsWrapAMIVersion,
+		MetavisorAMI:     *awsWrapAMIAMI,
+		ServiceDomain:    *awsWrapAMIDomain,
+	}
+	ami, err := wrap.Image(*awsWrapAMIRegion, *awsWrapAMIID, conf)
+	if err != nil {
+		// Could not wrap image, show error
+		logging.Fatal(err)
+		return
+	}
+	logging.Info("Successfully wrapped image:")
+	logging.Output(ami)
 }
 
 func shareLogs() {

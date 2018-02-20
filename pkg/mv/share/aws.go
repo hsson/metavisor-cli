@@ -59,7 +59,7 @@ func awsSnapFromID(id string, awsSvc aws.Service) (aws.Snapshot, error) {
 		return s, nil
 	} else {
 		logging.Debugf("'%s' is neither an instance or a snapshot", id)
-		return nil, ErrInvalidID
+		return nil, aws.ErrInvalidID
 	}
 }
 

@@ -22,9 +22,6 @@ const (
 )
 
 var (
-	// ErrInvalidID is returned if a specified ID is not of correct format
-	ErrInvalidID = errors.New("the specified ID is not of valid format")
-
 	// ErrFileExist is returned if specifying an output path leading to an existing file
 	ErrFileExist = errors.New("the specified output file already exist")
 
@@ -43,7 +40,7 @@ var (
 func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath string) (string, error) {
 	logging.Info("Getting metavisor logs...")
 	if !aws.IsInstanceID(id) && !aws.IsSnapshotID(id) {
-		return "", ErrInvalidID
+		return "", aws.ErrInvalidID
 	}
 	path, err := parseOutPath(path)
 	if err != nil {
@@ -102,7 +99,12 @@ func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath st
 		SnapshotID: snap.ID(),
 	}
 	logging.Info("Launching a temporary instance to get logs...")
-	instance, err := awsSvc.LaunchGenericInstance(userdata, keyName, device)
+	ami := aws.GenericAMI(region)
+	if ami == "" {
+		return "", aws.ErrNoAMIInRegion
+	}
+	instanceName := "Temporary-share-logs-instance"
+	instance, err := awsSvc.LaunchInstance(ami, aws.SmallInstanceType, userdata, keyName, instanceName, device)
 	if err != nil {
 		switch err {
 		case aws.ErrNotAllowed:

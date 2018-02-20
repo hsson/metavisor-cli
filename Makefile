@@ -1,4 +1,4 @@
-GOOS_LINUX 	      := linux
+GOOS_LINUX        := linux
 GOOS_WINDOWS      := windows
 GOOS_DARWIN       := darwin
 ARCH              := amd64

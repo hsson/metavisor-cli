@@ -1,10 +1,9 @@
-package version
+package mv
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/brkt/metavisor-cli/pkg/list"
 	"github.com/brkt/metavisor-cli/pkg/logging"
 )
 
@@ -55,7 +54,7 @@ func GetInfo() (*Info, error) {
 }
 
 func getLatestMVVersion() (string, error) {
-	versions, err := list.GetMetavisorVersions()
+	versions, err := GetMetavisorVersions()
 	if err != nil {
 		return "", err
 	}
