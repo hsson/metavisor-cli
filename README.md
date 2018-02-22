@@ -12,7 +12,11 @@ $ go build cmd/metavisor.go
 ```
 OR run
 ```
-make build
+$ make build
+```
+OR you can also build the CLI using Docker, to avoid having to install Go and `dep`, simply run:
+```
+$ make docker-build
 ```
 If you instead decide to grab a binary from the releases page, make sure to get the one built for your system (e.g. get metavisor-darwin if you're on macOS).
 
@@ -27,6 +31,21 @@ The easiest way to install `dep` on macOS is through Homebrew:
 $ brew install dep
 $ brew upgrade dep
 ```
+
+## Using Docker
+If `go` or `dep` is not installed, and you still want to compile from the soruce code, Docker can be user. The following `make` targets are available:
+### `make docker-build`
+Will compile a binary for your current system, e.g. if you're running Windows a binary called `metavisor.exe` will be created.
+
+### `make docker-build-[darwin/linux/windows]`
+This make target can be used to create a binary for the specified platform, regarless of which system you're currently using. E.g. running `make docker-build-darwin` on a Windows machine will create a binary called `metavisor`.
+
+### `make docker-build-all`
+Create binaries for Windows, Linux, and Darwin. The binaries will have a suffix indicating which platform they're built for. I.e. `make docker-build-all` outputs:
+
+- metavisor-linux
+- metavisor-darwin
+- metavisor-windows.exe
 
 ## Licensing
 This project is licensed under the Apache 2.0 license. Please see the `LICENSE` file for full licensing details.
