@@ -107,6 +107,14 @@ func awsVerifyConfig(conf Config) error {
 		logging.Error("The specified Metavisor AMI is not a valid AMI ID")
 		return ErrInvalidAMI
 	}
+	if conf.Token != "" {
+		isValid := isValidToken(conf.Token)
+		if !isValid {
+			// The specified token is not a valid launch token
+			logging.Error("The specified token is not a launch token")
+			return ErrInvalidLaunchToken
+		}
+	}
 	return nil
 }
 

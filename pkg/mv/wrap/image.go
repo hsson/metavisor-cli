@@ -14,6 +14,14 @@ func awsWrapImage(awsSvc aws.Service, region, id string, conf Config) (string, e
 	if !aws.IsAMIID(id) {
 		return "", aws.ErrInvalidID
 	}
+	if conf.Token != "" {
+		isValid := isValidToken(conf.Token)
+		if !isValid {
+			// The specified token is not a valid launch token
+			logging.Error("The specified token is not a launch token")
+			return "", ErrInvalidLaunchToken
+		}
+	}
 
 	// Launch a new instance
 	logging.Info("Launching temporary wrapper instance")
