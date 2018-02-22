@@ -410,3 +410,10 @@ __pycache__/
 
 
 # End of https://www.gitignore.io/api/osx,linux,macos,windows,sublimetext,visualstudio,visualstudiocode
+
+### Build outputs ###
+metavisor
+metavisor-linux
+metavisor-darwin
+metavisor-windows.exe
+metavisor.exe
