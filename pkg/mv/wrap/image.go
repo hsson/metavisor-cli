@@ -16,7 +16,7 @@ func awsWrapImage(awsSvc aws.Service, region, id string, conf Config) (string, e
 	}
 
 	// Launch a new instance
-	logging.Info("Launching temporary wrapper instance...")
+	logging.Info("Launching temporary wrapper instance")
 	instanceName := "Temporary-Metavisor-wrapper-instance"
 	inst, err := awsSvc.LaunchInstance(id, aws.LargerInstanceType, "", "", instanceName)
 	if err != nil {
@@ -28,6 +28,7 @@ func awsWrapImage(awsSvc aws.Service, region, id string, conf Config) (string, e
 		}
 		return "", err
 	}
+	logging.Info("Instance is ready")
 
 	// Then wrap the instance
 	logging.Info("Wrapping the temporary instance with Metavisor")
@@ -67,6 +68,7 @@ func awsWrapImage(awsSvc aws.Service, region, id string, conf Config) (string, e
 	if err != nil {
 		logging.Warningf("Failed to cleanup temporary instance %s", instID)
 	}
+	logging.Infof("Instance %s terminated", instID)
 
 	return ami, nil
 }

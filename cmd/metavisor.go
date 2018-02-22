@@ -37,8 +37,8 @@ var (
 
 	// AWS Wrap an instance
 	awsWrapInstance        = awsCommand.Command("wrap-instance", "Wrap a running instance with Metavisor")
-	awsWrapInstanceRegion  = awsWrapInstance.Flag("region", fmt.Sprintf("The AWS region to look for the resource in (overrides $%s)", envAWSRegion)).Required().Envar(envAWSRegion).String()
-	awsWrapInstanceToken   = awsWrapInstance.Flag("token", fmt.Sprintf("Launch token used to identify the Metavisor (overrides $%s)", envLaunchToken)).Required().Envar(envLaunchToken).String() // TODO: Make non-required
+	awsWrapInstanceRegion  = awsWrapInstance.Flag("region", fmt.Sprintf("The AWS region to look for the instance in (overrides $%s)", envAWSRegion)).Required().Envar(envAWSRegion).String()
+	awsWrapInstanceToken   = awsWrapInstance.Flag("token", fmt.Sprintf("Launch token used to identify the Metavisor (overrides $%s)", envLaunchToken)).Envar(envLaunchToken).String() // TODO: Make non-required
 	awsWrapInstanceVersion = awsWrapInstance.Flag("metavisor-version", "Which version of the MV to use").PlaceHolder("VERSION").String()
 	awsWrapInstanceAMI     = awsWrapInstance.Flag("metavisor-image", "AMI ID of MV to use, must be in correct region").Hidden().PlaceHolder("AMI-ID").String()
 	awsWrapInstanceDomain  = awsWrapInstance.Flag("service-domain", "Specify which Yeti to talk to").Hidden().PlaceHolder("DOMAIN").Envar(envServiceDomain).String()
@@ -46,7 +46,7 @@ var (
 
 	// AWS Wrap an image
 	awsWrapAMI        = awsCommand.Command("wrap-ami", "Wrap a regular AMI with Metavisor")
-	awsWrapAMIRegion  = awsWrapAMI.Flag("region", fmt.Sprintf("The AWS region to look for the resource in (overrides $%s)", envAWSRegion)).Required().Envar(envAWSRegion).String()
+	awsWrapAMIRegion  = awsWrapAMI.Flag("region", fmt.Sprintf("The AWS region to look for the AMI in (overrides $%s)", envAWSRegion)).Required().Envar(envAWSRegion).String()
 	awsWrapAMIToken   = awsWrapAMI.Flag("token", fmt.Sprintf("Launch token used to identify the Metavisor (overrides $%s)", envLaunchToken)).Required().Envar(envLaunchToken).String() // TODO: Make non-required
 	awsWrapAMIVersion = awsWrapAMI.Flag("metavisor-version", "Which version of the MV to use").PlaceHolder("VERSION").String()
 	awsWrapAMIAMI     = awsWrapAMI.Flag("metavisor-image", "AMI ID of MV to use, must be in correct region").Hidden().PlaceHolder("AMI-ID").String()
@@ -79,6 +79,7 @@ var (
 )
 
 func main() {
+	app.HelpFlag.Hidden()
 	logging.LogLevel = logging.LevelInfo
 	logging.LogFileNamePrefix = "metavisor-cli-log"
 	logging.LogToFile = true

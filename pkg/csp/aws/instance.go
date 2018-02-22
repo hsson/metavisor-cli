@@ -185,7 +185,7 @@ func (a *awsService) LaunchInstance(imageID, instanceType, userData, keyName, in
 			if ok && aerr.Code() == accessDeniedErrorCode {
 				return nil, ErrNotAllowed
 			}
-			logging.Info("Instance never became ready...")
+			logging.Info("Instance never became ready")
 			return nil, err
 		}
 		if strings.TrimSpace(instanceName) != "" {

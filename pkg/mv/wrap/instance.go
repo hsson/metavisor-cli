@@ -41,7 +41,7 @@ func awsWrapInstance(awsSvc aws.Service, region, id string, conf Config) (string
 	logging.Debugf("MV snapshot is %d GiB", mvVolumeSIze)
 
 	// Stop the instance so that devices can be modified
-	logging.Info("Stopping the instance...")
+	logging.Info("Stopping the instance")
 	awsSvc.StopInstance(id)
 	logging.Info("Instance stopped")
 
@@ -139,7 +139,7 @@ func awsShuffleInstanceVolumes(service aws.Service, instance aws.Instance, mvVol
 		return nil, err
 	}
 
-	logging.Info("Waiting for Metavisor and instance volumes to be attached...")
+	logging.Info("Waiting for Metavisor and instance volumes to be attached")
 	// Wait for devices to get attached and shows up in instance block device mapping
 	return awaitInstanceDevices(service, instance, mvVolID, instanceRootVolID)
 }

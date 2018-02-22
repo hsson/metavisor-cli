@@ -56,7 +56,7 @@ func IsSnapshotID(id string) bool {
 	return strings.HasPrefix(id, snapPrefix)
 }
 
-// IsAMIID determines if the specified ID belog to an AMI or not
+// IsAMIID determines if the specified ID belong to an AMI or not
 func IsAMIID(id string) bool {
 	// TODO: Maybe use regex?
 	return strings.HasPrefix(id, amiPrefix)

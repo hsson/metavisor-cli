@@ -21,12 +21,12 @@ const (
 	// LevelOutput only logs output messages, so no logs really
 	LevelOutput
 
-	templateDebug   = "DEBUG:   %v"
-	templateInfo    = "INFO:    %v"
-	templateWarning = "WARNING: %v"
-	templateError   = "ERROR:   %v"
-	templateOutput  = "OUTPUT:  %s"
-	templateFatal   = "FATAL:   %s"
+	templateDebug   = "DEBUG: %v"
+	templateInfo    = "INFO:  %v"
+	templateWarning = "WARN:  %v"
+	templateError   = "ERROR: %v"
+	templateOutput  = "OUTPUT: %s"
+	templateFatal   = "FATAL: %s"
 )
 
 var (
@@ -113,7 +113,11 @@ func Fatalf(t string, v ...interface{}) {
 
 func print(lvl level, template string, v ...interface{}) {
 	if lvl >= LogLevel {
-		termLogger.Printf(template, fmt.Sprintln(v...))
+		if lvl == LevelInfo && LogLevel != LevelDebug {
+			termLogger.Print(fmt.Sprintln(v...))
+		} else {
+			termLogger.Printf(template, fmt.Sprintln(v...))
+		}
 	}
 	if fileLogger() != nil {
 		fileLogger().Printf(template, fmt.Sprintln(v...))

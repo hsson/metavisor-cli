@@ -109,7 +109,7 @@ func (a *awsService) DeleteSnapshot(snapshotID string) error {
 }
 
 func waitForSnapshot(client *ec2.EC2, snapshotID string) error {
-	// Wait for the snapshot to be compelted
+	// Wait for the snapshot to be completed
 	input := &ec2.DescribeSnapshotsInput{
 		SnapshotIds: aws.StringSlice([]string{snapshotID}),
 		Filters: []*ec2.Filter{&ec2.Filter{

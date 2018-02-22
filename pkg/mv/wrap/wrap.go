@@ -21,7 +21,7 @@ const (
 	// GuestDeviceName is where the MV expects the guest OS to be mounted
 	// after being wrapped
 	GuestDeviceName = "/dev/sdf"
-	// ProdDomain the domain of the prodution service
+	// ProdDomain is the domain of the production service
 	ProdDomain = "mgmt.brkt.com"
 
 	rootVolumeType = "gp2"
