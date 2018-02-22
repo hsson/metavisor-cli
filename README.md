@@ -1,5 +1,5 @@
 # metavisor-cli
-The `metavisor-cli` is a command-line interface to easily get started and deploy cloud instances with the Metavisor.
+The `metavisor-cli` is a command-line interface to easily deploy cloud instances with the Metavisor.
 
 ## Requirements
 This CLI is implemented using [Go](https://golang.org) (version 1.10 to be specific). Go must be installed in order to compile the CLI. If you don't have Go installed, every release of the CLI is also accompanied by pre-compiled binaries for Darwin, Linux, and Windows which don't have any additional dependenices. To get the correct dependency versions when compiling, make sure to use the depedency management tool `dep`.
@@ -14,7 +14,7 @@ OR run
 ```
 make build
 ```
-If you instead decicde to grab a binary from the releases page, make sure to get the one for your system (e.g. get metavisor-darwin if you're on macOS). For ease simplicity, rename the binary and remove the platform suffix, so that e.g. `metavisor-windows.exe` becomes `metavisor.exe`. This is not required for the CLI to work, but will help with consistency if ever referring to the documentation or contacting support.
+If you instead decide to grab a binary from the releases page, make sure to get the one built for your system (e.g. get metavisor-darwin if you're on macOS).
 
 
 After you have a compiled binary of the CLI, simply put it somewhere in your `$PATH` and you're ready to start using it. Try it out by running `metavisor version`.
