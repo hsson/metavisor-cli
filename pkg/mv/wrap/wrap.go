@@ -15,6 +15,9 @@ type Config struct {
 	MetavisorVersion string
 	MetavisorAMI     string
 	ServiceDomain    string
+	IAMRoleARN       string
+	IAMDeviceARN     string
+	IAMCode          string
 }
 
 const (
@@ -68,7 +71,11 @@ var (
 // as the ID given as a parameter).
 func Instance(region, id string, conf Config) (string, error) {
 	logging.Infof("Wrapping instance %s with Metavisor...", id)
-	service, err := aws.New(region)
+	service, err := aws.New(region, &aws.IAMConfig{
+		RoleARN:      conf.IAMRoleARN,
+		MFADeviceARN: conf.IAMDeviceARN,
+		MFACode:      conf.IAMCode,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -81,7 +88,11 @@ func Instance(region, id string, conf Config) (string, error) {
 // specified ot give extra parameters when wrapping.
 func Image(region, id string, conf Config) (string, error) {
 	logging.Infof("Creating wrapped image based on %s...", id)
-	service, err := aws.New(region)
+	service, err := aws.New(region, &aws.IAMConfig{
+		RoleARN:      conf.IAMRoleARN,
+		MFADeviceARN: conf.IAMDeviceARN,
+		MFACode:      conf.IAMCode,
+	})
 	if err != nil {
 		return "", err
 	}

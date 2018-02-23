@@ -2,10 +2,16 @@ package aws
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"strings"
+
+	"github.com/brkt/metavisor-cli/pkg/logging"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
@@ -58,6 +64,8 @@ var (
 	ErrInvalidInstanceAttrValue = errors.New("specified attribute value is of incorrect type")
 	// ErrInstanceImpaired is returned if instance status is "impaired"
 	ErrInstanceImpaired = errors.New("instance is in impaired state")
+	// ErrInvalidARN is returned if a specified ARN can't be assumed
+	ErrInvalidARN = errors.New("failed to assume role with given ARN")
 )
 
 var validVolumeTypes = []string{"gp2", "io1", "st1", "sc1", "standard"}
@@ -183,9 +191,17 @@ type resource struct {
 
 func (r *resource) ID() string { return r.id }
 
+// IAMConfig can be specified when creating a new AWS Service to assume a
+// role before doing any operations.
+type IAMConfig struct {
+	RoleARN      string
+	MFADeviceARN string
+	MFACode      string
+}
+
 // New will initialize and return a new AWS Service that can be used to perform
 // common operations in AWS.
-func New(region string) (Service, error) {
+func New(region string, iamConf *IAMConfig) (Service, error) {
 	if valid := IsValidRegion(region); !valid {
 		return nil, ErrNonExistingRegion
 	}
@@ -195,10 +211,71 @@ func New(region string) (Service, error) {
 	if err != nil {
 		return nil, err
 	}
+	var creds *credentials.Credentials
+	if iamConf != nil && strings.TrimSpace(iamConf.RoleARN) != "" {
+		creds, err = assumeIAMRole(sess, *iamConf)
+		if err != nil {
+			logging.Error("Failed to assume IAM role")
+			return nil, err
+		}
+	}
 	service := new(awsService)
 	service.region = region
-	service.client = ec2.New(sess)
+	if creds != nil {
+		service.client = ec2.New(sess, &aws.Config{
+			Credentials: creds,
+		})
+	} else {
+		service.client = ec2.New(sess)
+	}
 	return service, nil
+}
+
+func assumeIAMRole(sess *session.Session, conf IAMConfig) (*credentials.Credentials, error) {
+	if conf.MFACode != "" && conf.MFADeviceARN == "" {
+		logging.Warning("Specified MFA code without MFA device, skipping MFA")
+		conf.MFACode = ""
+	}
+	promptProvider := func(p *stscreds.AssumeRoleProvider) {
+		p.SerialNumber = aws.String(conf.MFADeviceARN)
+		p.TokenProvider = func() (string, error) {
+			var v string
+			fmt.Fprint(os.Stderr, "Assume Role MFA token code: ")
+			_, err := fmt.Scanln(&v)
+			logging.Debugf("Got MFA code from user")
+			return v, err
+		}
+	}
+
+	codeProvider := func(p *stscreds.AssumeRoleProvider) {
+		p.SerialNumber = aws.String(conf.MFADeviceARN)
+		p.TokenCode = aws.String(conf.MFACode)
+	}
+	var creds *credentials.Credentials
+
+	if conf.MFADeviceARN != "" && conf.MFACode != "" {
+		logging.Debug("Assuming IAM role with specified code")
+		creds = stscreds.NewCredentials(sess, conf.RoleARN, codeProvider)
+	} else if conf.MFADeviceARN != "" {
+		logging.Debug("Assuming IAM role with prompting for code")
+		creds = stscreds.NewCredentials(sess, conf.RoleARN, promptProvider)
+	} else {
+		logging.Debug("Assuming IAM role without MFA device")
+		creds = stscreds.NewCredentials(sess, conf.RoleARN)
+	}
+	if _, err := creds.Get(); err != nil {
+		aerr, ok := err.(awserr.Error)
+		if ok && aerr.Code() == accessDeniedErrorCode {
+			logging.Error(aerr.Message())
+			return nil, ErrNotAllowed
+		} else if ok {
+			logging.Error(aerr.Message())
+			return nil, ErrInvalidARN
+		}
+		logging.Debugf("Could not assume role: %s", err)
+		return nil, ErrInvalidARN
+	}
+	return creds, nil
 }
 
 type awsService struct {

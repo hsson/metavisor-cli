@@ -33,7 +33,10 @@ var (
 	app = kingpin.New("metavisor", helpText)
 
 	// AWS commands
-	awsCommand = app.Command("aws", "Perform operations related to AWS")
+	awsCommand        = app.Command("aws", "Perform operations related to AWS")
+	awsCommandIAM     = awsCommand.Flag("iam", "Role ARN to assume when performing operations").PlaceHolder("ARN").String()
+	awsCommandIAMMFA  = awsCommand.Flag("iam-mfa", "MFA device ARN to use for MFA").PlaceHolder("ARN").String()
+	awsCommandIAMCode = awsCommand.Flag("iam-code", "MFA code to use with MFA device, prompted if not specified").PlaceHolder("CODE").String()
 
 	// AWS Wrap an instance
 	awsWrapInstance        = awsCommand.Command("wrap-instance", "Wrap a running instance with Metavisor")
@@ -150,6 +153,9 @@ func wrapInstance() {
 		MetavisorVersion: *awsWrapInstanceVersion,
 		MetavisorAMI:     *awsWrapInstanceAMI,
 		ServiceDomain:    *awsWrapInstanceDomain,
+		IAMRoleARN:       *awsCommandIAM,
+		IAMDeviceARN:     *awsCommandIAMMFA,
+		IAMCode:          *awsCommandIAMCode,
 	}
 	inst, err := wrap.Instance(*awsWrapInstanceRegion, *awsWrapInstanceID, conf)
 	if err != nil {
@@ -167,6 +173,9 @@ func wrapAMI() {
 		MetavisorVersion: *awsWrapAMIVersion,
 		MetavisorAMI:     *awsWrapAMIAMI,
 		ServiceDomain:    *awsWrapAMIDomain,
+		IAMRoleARN:       *awsCommandIAM,
+		IAMDeviceARN:     *awsCommandIAMMFA,
+		IAMCode:          *awsCommandIAMCode,
 	}
 	ami, err := wrap.Image(*awsWrapAMIRegion, *awsWrapAMIID, conf)
 	if err != nil {
@@ -179,7 +188,7 @@ func wrapAMI() {
 }
 
 func shareLogs() {
-	logs, err := share.LogsAWS(*awsShareLogsRegion, *awsShareLogsID, *awsShareLogsOutPath, *awsShareLogsKeyName, *awsShareLogsKeyPath, *awsShareLogsBastionHost, *awsShareLogsBastionUser, *awsShareLogsBastionKey)
+	logs, err := share.LogsAWS(*awsShareLogsRegion, *awsShareLogsID, *awsShareLogsOutPath, *awsShareLogsKeyName, *awsShareLogsKeyPath, *awsShareLogsBastionHost, *awsShareLogsBastionUser, *awsShareLogsBastionKey, *awsCommandIAM, *awsCommandIAMMFA, *awsCommandIAMCode)
 	if err != nil {
 		// Could not get logs, show error
 		logging.Fatal(err)
