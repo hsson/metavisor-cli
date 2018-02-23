@@ -37,7 +37,7 @@ var (
 
 // LogsAWS will get the MV logs of an instance or snapshot in AWS and return
 // the path to the resuling log archive.
-func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath string) (string, error) {
+func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath, arn, mfaDevice, mfaCode string) (string, error) {
 	logging.Info("Getting metavisor logs...")
 	if !aws.IsInstanceID(id) && !aws.IsSnapshotID(id) {
 		return "", aws.ErrInvalidID
@@ -46,8 +46,11 @@ func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath st
 	if err != nil {
 		return path, err
 	}
-
-	awsSvc, err := aws.New(region)
+	awsSvc, err := aws.New(region, &aws.IAMConfig{
+		RoleARN:      arn,
+		MFADeviceARN: mfaDevice,
+		MFACode:      mfaCode,
+	})
 	if err != nil {
 		return "", err
 	}
