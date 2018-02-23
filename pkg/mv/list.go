@@ -2,6 +2,7 @@ package mv
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -48,14 +49,14 @@ func FormatMetavisors(mvs MetavisorVersions, withJSON bool) (string, error) {
 }
 
 // GetMetavisorVersions will retrieve a list of available Metavisors
-func GetMetavisorVersions() (MetavisorVersions, error) {
-	return awsGetMVVersions()
+func GetMetavisorVersions(ctx context.Context) (MetavisorVersions, error) {
+	return awsGetMVVersions(ctx)
 }
 
 // GetImagesForVersionAWS will return a mapping from region to MV AMI in AWS, given
 // a certain metavisor version. Available MV versions can be retrieved using the
 // GetMetavisorVersions() function.
-func GetImagesForVersionAWS(metavisorVersion string) (map[string]string, error) {
+func GetImagesForVersionAWS(ctx context.Context, metavisorVersion string) (map[string]string, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(prodBucketRegion),
 	})
@@ -64,5 +65,5 @@ func GetImagesForVersionAWS(metavisorVersion string) (map[string]string, error) 
 	}
 	s3C := s3.New(sess)
 	key := fmt.Sprintf("%s%s", metavisorVersion, keySuffix)
-	return getObjectBody(s3C, key)
+	return getObjectBody(ctx, s3C, key)
 }

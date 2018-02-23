@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"context"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -22,7 +23,7 @@ func (i *image) DeviceMapping() map[string]string { return i.deviceMapping }
 func (i *image) ENASupport() bool                 { return i.enaSupport }
 func (i *image) State() string                    { return i.state }
 
-func (a *awsService) CreateImage(instanceID, name string) (string, error) {
+func (a *awsService) CreateImage(ctx context.Context, instanceID, name string) (string, error) {
 	if strings.TrimSpace(instanceID) == "" {
 		return "", ErrInstanceNonExisting
 	}
@@ -30,8 +31,7 @@ func (a *awsService) CreateImage(instanceID, name string) (string, error) {
 		InstanceId: aws.String(instanceID),
 		Name:       aws.String(name),
 	}
-
-	out, err := a.client.CreateImage(input)
+	out, err := a.client.CreateImageWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -43,7 +43,7 @@ func (a *awsService) CreateImage(instanceID, name string) (string, error) {
 		return "", err
 	}
 	logging.Info("Waiting for image to become available...")
-	err = a.client.WaitUntilImageAvailable(&ec2.DescribeImagesInput{
+	err = a.client.WaitUntilImageAvailableWithContext(ctx, &ec2.DescribeImagesInput{
 		ImageIds: aws.StringSlice([]string{*out.ImageId}),
 	})
 	if err != nil {
@@ -57,14 +57,14 @@ func (a *awsService) CreateImage(instanceID, name string) (string, error) {
 	return *out.ImageId, nil
 }
 
-func (a *awsService) GetImage(imageID string) (Image, error) {
+func (a *awsService) GetImage(ctx context.Context, imageID string) (Image, error) {
 	if strings.TrimSpace(imageID) == "" {
 		return nil, ErrImageNonExisting
 	}
 	input := &ec2.DescribeImagesInput{
 		ImageIds: aws.StringSlice([]string{imageID}),
 	}
-	out, err := a.client.DescribeImages(input)
+	out, err := a.client.DescribeImagesWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {

@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -17,14 +18,14 @@ type snapshot struct {
 
 func (s *snapshot) SizeGB() int64 { return s.sizeGB }
 
-func (a *awsService) GetSnapshot(snapshotID string) (Snapshot, error) {
+func (a *awsService) GetSnapshot(ctx context.Context, snapshotID string) (Snapshot, error) {
 	if strings.TrimSpace(snapshotID) == "" {
 		return nil, ErrSnapshotNonExisting
 	}
 	input := &ec2.DescribeSnapshotsInput{
 		SnapshotIds: aws.StringSlice([]string{snapshotID}),
 	}
-	out, err := a.client.DescribeSnapshots(input)
+	out, err := a.client.DescribeSnapshotsWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -48,7 +49,7 @@ func (a *awsService) GetSnapshot(snapshotID string) (Snapshot, error) {
 	return nil, ErrSnapshotNonExisting
 }
 
-func (a *awsService) CreateSnapshot(name, sourceVolumeID string) (Snapshot, error) {
+func (a *awsService) CreateSnapshot(ctx context.Context, name, sourceVolumeID string) (Snapshot, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, ErrInvalidName
 	}
@@ -57,7 +58,7 @@ func (a *awsService) CreateSnapshot(name, sourceVolumeID string) (Snapshot, erro
 		Description: aws.String(desc),
 		VolumeId:    aws.String(sourceVolumeID),
 	}
-	snap, err := a.client.CreateSnapshot(input)
+	snap, err := a.client.CreateSnapshotWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -73,13 +74,13 @@ func (a *awsService) CreateSnapshot(name, sourceVolumeID string) (Snapshot, erro
 		*snap.VolumeSize,
 	}
 	logging.Info("Waiting for snapshot to become ready...")
-	err = waitForSnapshot(a.client, res.ID())
+	err = waitForSnapshot(ctx, a.client, res.ID())
 	if err != nil {
 		logging.Error("Snapshot never became ready")
 		return nil, err
 	}
 	nameTags := map[string]string{"Name": name}
-	err = a.TagResources(nameTags, res.ID())
+	err = a.TagResources(ctx, nameTags, res.ID())
 	if err == ErrNotAllowed {
 		logging.Warning("Insufficient IAM permissions to tag resource, skipping Name")
 		return res, nil
@@ -87,14 +88,14 @@ func (a *awsService) CreateSnapshot(name, sourceVolumeID string) (Snapshot, erro
 	return res, err
 }
 
-func (a *awsService) DeleteSnapshot(snapshotID string) error {
+func (a *awsService) DeleteSnapshot(ctx context.Context, snapshotID string) error {
 	if strings.TrimSpace(snapshotID) == "" {
-		return ErrInvalidName
+		return ErrInvalidID
 	}
 	input := &ec2.DeleteSnapshotInput{
 		SnapshotId: aws.String(snapshotID),
 	}
-	_, err := a.client.DeleteSnapshot(input)
+	_, err := a.client.DeleteSnapshotWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -108,7 +109,7 @@ func (a *awsService) DeleteSnapshot(snapshotID string) error {
 	return nil
 }
 
-func waitForSnapshot(client *ec2.EC2, snapshotID string) error {
+func waitForSnapshot(ctx context.Context, client *ec2.EC2, snapshotID string) error {
 	// Wait for the snapshot to be completed
 	input := &ec2.DescribeSnapshotsInput{
 		SnapshotIds: aws.StringSlice([]string{snapshotID}),
@@ -120,7 +121,7 @@ func waitForSnapshot(client *ec2.EC2, snapshotID string) error {
 			Values: aws.StringSlice([]string{"100%"}),
 		}},
 	}
-	err := client.WaitUntilSnapshotCompleted(input)
+	err := client.WaitUntilSnapshotCompletedWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {

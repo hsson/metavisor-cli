@@ -1,8 +1,10 @@
 package mv
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/brkt/metavisor-cli/pkg/logging"
 )
@@ -12,6 +14,7 @@ const (
 	CLIVersion = "1.0.0"
 
 	outputTemplate = "CLI Version:\t%s\nMV Version:\t%s"
+	fetchTimeout   = 2 * time.Second
 )
 
 // Info is what will be displayed as a result of the version command
@@ -42,21 +45,30 @@ func FormatInfo(info *Info, withJSON bool) (string, error) {
 }
 
 // GetInfo will retrieve the CLI version and the Latest MV version. If the latest MV version
-// cannot be retrieved, the CLI version will still be returned — but along with an error
-func GetInfo() (*Info, error) {
-	mv, err := getLatestMVVersion()
+// cannot be retrieved, the CLI version will still be returned — but along with an error.
+func GetInfo(ctx context.Context) (*Info, error) {
+	// Cancel latest MV fetch if it takes too long
+	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
+	defer cancel()
 	out := &Info{
 		CLIVersion: CLIVersion,
-		MVVersion:  mv,
-		Success:    err == nil,
+	}
+	res := make(chan MaybeString, 1)
+	go getLatestMVVersion(ctx, res)
+	var err error
+	select {
+	case <-ctx.Done():
+		out.Success = false
+		err = ctx.Err()
+	case r := <-res:
+		out.MVVersion = r.Result
+		out.Success = r.Error == nil
+		err = r.Error
 	}
 	return out, err
 }
 
-func getLatestMVVersion() (string, error) {
-	versions, err := GetMetavisorVersions()
-	if err != nil {
-		return "", err
-	}
-	return versions.Latest, nil
+func getLatestMVVersion(ctx context.Context, c chan MaybeString) {
+	versions, err := GetMetavisorVersions(ctx)
+	c <- MaybeString{versions.Latest, err}
 }

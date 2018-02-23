@@ -1,6 +1,7 @@
 package share
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -10,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brkt/metavisor-cli/pkg/logging"
-
 	"github.com/brkt/metavisor-cli/pkg/csp/aws"
+	"github.com/brkt/metavisor-cli/pkg/logging"
+	"github.com/brkt/metavisor-cli/pkg/mv"
 	"github.com/brkt/metavisor-cli/pkg/scp"
 )
 
@@ -35,27 +36,62 @@ var (
 	ErrLogTimeout = errors.New("timed out while waiting for logs to download")
 )
 
+// Config can be used to specify extra parameters when sharing logs
+type Config struct {
+	LogsPath              string
+	AWSKeyName            string
+	PrivateKeyPath        string
+	BastionHost           string
+	BastionUsername       string
+	BastionPrivateKeyPath string
+	IAMRoleARN            string
+	IAMDeviceARN          string
+	IAMCode               string
+}
+
 // LogsAWS will get the MV logs of an instance or snapshot in AWS and return
 // the path to the resuling log archive.
-func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath, arn, mfaDevice, mfaCode string) (string, error) {
+func LogsAWS(ctx context.Context, region, id string, conf Config) (string, error) {
 	logging.Info("Getting metavisor logs...")
+	res := make(chan mv.MaybeString, 1)
+
+	go func() {
+		out, err := awsShareLogs(ctx, region, id, conf)
+		res <- mv.MaybeString{
+			Result: out,
+			Error:  err,
+		}
+	}()
+	select {
+	case <-ctx.Done():
+		// Context was cancelled, cleanup
+		mv.Cleanup(false)
+		return "", mv.ErrInterupted
+	case r := <-res:
+		mv.Cleanup(r.Error == nil)
+		return r.Result, r.Error
+	}
+}
+
+// TODO: Refactor this huge function...
+func awsShareLogs(ctx context.Context, region, id string, conf Config) (string, error) {
 	if !aws.IsInstanceID(id) && !aws.IsSnapshotID(id) {
 		return "", aws.ErrInvalidID
 	}
-	path, err := parseOutPath(path)
+	path, err := parseOutPath(conf.LogsPath)
 	if err != nil {
 		return path, err
 	}
 	awsSvc, err := aws.New(region, &aws.IAMConfig{
-		RoleARN:      arn,
-		MFADeviceARN: mfaDevice,
-		MFACode:      mfaCode,
+		RoleARN:      conf.IAMRoleARN,
+		MFADeviceARN: conf.IAMDeviceARN,
+		MFACode:      conf.IAMCode,
 	})
 	if err != nil {
 		return "", err
 	}
 
-	keyExist, err := awsSvc.KeyPairExist(keyName)
+	keyExist, err := awsSvc.KeyPairExist(ctx, conf.PrivateKeyPath)
 	if err != nil {
 		if err == aws.ErrNotAllowed {
 			// Not allowed to check if key exist, assume it's correct and continue
@@ -70,8 +106,8 @@ func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath, a
 		rand.Seed(time.Now().Unix())
 		randomName := fmt.Sprintf("MetavisorTemporaryKey-%d", rand.Int())
 		logging.Debugf("Creating temporray key pair with name: %s", randomName)
-		keyName = randomName
-		keyContent, err := awsSvc.CreateKeyPair(randomName)
+		conf.AWSKeyName = randomName
+		keyContent, err := awsSvc.CreateKeyPair(ctx, randomName)
 		if err != nil {
 			if err == aws.ErrNotAllowed {
 				// The use does not have IAM permission to create key pair, tell
@@ -82,13 +118,27 @@ func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath, a
 			}
 			return "", err
 		}
-		defer awsSvc.RemoveKeyPair(randomName)
+		mv.QueueCleanup(func() {
+			logging.Info("Deleting temporary AWS key pair")
+			err := awsSvc.RemoveKeyPair(ctx, randomName)
+			if err != nil {
+				logging.Errorf("Failed to clean up key pair in AWS: %s", randomName)
+				logging.Debugf("Error when deleting key pair in AWS: %s", err)
+			}
+		}, false)
 		p, err := writeToTempFile(keyContent)
-		keyPath = p
-		defer os.Remove(p)
+		conf.PrivateKeyPath = p
+		mv.QueueCleanup(func() {
+			logging.Infof("Deleting temporary private key")
+			err := os.Remove(p)
+			if err != nil {
+				logging.Errorf("Failed to clean up private key: %s", p)
+				logging.Debugf("Could not delete file: %s", err)
+			}
+		}, false)
 	}
 
-	snap, err := awsSnapFromID(id, awsSvc)
+	snap, err := awsSnapFromID(ctx, id, awsSvc)
 	if err != nil {
 		return "", err
 	}
@@ -107,14 +157,14 @@ func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath, a
 		return "", aws.ErrNoAMIInRegion
 	}
 	instanceName := "Temporary-share-logs-instance"
-	instance, err := awsSvc.LaunchInstance(ami, aws.SmallInstanceType, userdata, keyName, instanceName, device)
+	instance, err := awsSvc.LaunchInstance(ctx, ami, aws.SmallInstanceType, userdata, conf.AWSKeyName, instanceName, device)
 	if err != nil {
 		switch err {
 		case aws.ErrNotAllowed:
 			logging.Error("Not enough IAM permissions to launch an instance")
 			break
 		case aws.ErrKeyNonExisting:
-			logging.Errorf("The key pair '%s' does not exist in AWS", keyName)
+			logging.Errorf("The key pair '%s' does not exist in AWS", conf.AWSKeyName)
 			break
 		case aws.ErrNoAMIInRegion:
 			logging.Error("There is no AMI available in the specified region")
@@ -125,10 +175,17 @@ func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath, a
 		}
 		return "", err
 	}
-	defer awsSvc.TerminateInstance(instance.ID())
+	mv.QueueCleanup(func() {
+		logging.Infof("Terminating temporary instance %s", instance.ID())
+		err := awsSvc.TerminateInstance(ctx, instance.ID())
+		if err != nil {
+			logging.Errorf("Failed to cleanup instance: %s", instance.ID())
+			logging.Debugf("Got error when terminating instance: %s", err)
+		}
+	}, false)
 	if instance.PublicIP() == "" {
 		logging.Info("Waiting for public IP to become available...")
-		instance, err = awsAwaitPublicIP(instance.ID(), awsSvc)
+		instance, err = awsAwaitPublicIP(ctx, instance.ID(), awsSvc)
 		if err != nil {
 			// Instance has no public IP, can't continue...
 			return "", err
@@ -138,14 +195,14 @@ func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath, a
 	scpConfig := scp.Config{
 		Username: "ec2-user",
 		Host:     instance.PublicIP(),
-		Key:      keyPath,
+		Key:      conf.PrivateKeyPath,
 	}
 	// TODO: Bastion support not implemented yet
-	if bastHost != "" || bastPath != "" || bastUser != "" {
+	if conf.BastionHost != "" || conf.BastionPrivateKeyPath != "" || conf.BastionUsername != "" {
 		scpProxy := &scp.Proxy{
-			Username: bastUser,
-			Host:     bastHost,
-			Key:      bastPath,
+			Username: conf.BastionUsername,
+			Host:     conf.BastionHost,
+			Key:      conf.BastionPrivateKeyPath,
 		}
 		scpConfig.Proxy = scpProxy
 	}
@@ -165,6 +222,7 @@ func LogsAWS(region, id, path, keyName, keyPath, bastHost, bastUser, bastPath, a
 			continue
 		}
 		logging.Info("Successfully downloaded logs")
+
 		return path, nil
 	}
 	return "", errors.New("Timed out while waiting for logs to download")

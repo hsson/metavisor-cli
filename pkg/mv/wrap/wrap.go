@@ -1,6 +1,7 @@
 package wrap
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -69,52 +70,93 @@ var (
 // parameter is invalid, an error will be returned, otherwise the
 // ID of the wrapped instance will be returned (typically the same
 // as the ID given as a parameter).
-func Instance(region, id string, conf Config) (string, error) {
+func Instance(ctx context.Context, region, id string, conf Config) (string, error) {
 	logging.Infof("Wrapping instance %s with Metavisor...", id)
-	service, err := aws.New(region, &aws.IAMConfig{
-		RoleARN:      conf.IAMRoleARN,
-		MFADeviceARN: conf.IAMDeviceARN,
-		MFACode:      conf.IAMCode,
-	})
-	if err != nil {
-		return "", err
+	res := make(chan mv.MaybeString, 1)
+
+	go func() {
+		service, err := aws.New(region, &aws.IAMConfig{
+			RoleARN:      conf.IAMRoleARN,
+			MFADeviceARN: conf.IAMDeviceARN,
+			MFACode:      conf.IAMCode,
+		})
+		if err != nil {
+			res <- mv.MaybeString{
+				Result: "",
+				Error:  err,
+			}
+		}
+		inst, err := awsWrapInstance(ctx, service, region, id, conf)
+		res <- mv.MaybeString{
+			Result: inst,
+			Error:  err,
+		}
+	}()
+	select {
+	case <-ctx.Done():
+		// Context was cancelled, cleanup
+		mv.Cleanup(false)
+		return "", mv.ErrInterupted
+	case r := <-res:
+		mv.Cleanup(r.Error == nil)
+		return r.Result, r.Error
 	}
-	return awsWrapInstance(service, region, id, conf)
 }
 
 // Image will wrap a given image with the Metavisor, and then output
 // a new image that can be used to launch instances. The specified
 // image ID must exist in the specified region. A config can be optionally
 // specified ot give extra parameters when wrapping.
-func Image(region, id string, conf Config) (string, error) {
+func Image(ctx context.Context, region, id string, conf Config) (string, error) {
 	logging.Infof("Creating wrapped image based on %s...", id)
-	service, err := aws.New(region, &aws.IAMConfig{
-		RoleARN:      conf.IAMRoleARN,
-		MFADeviceARN: conf.IAMDeviceARN,
-		MFACode:      conf.IAMCode,
-	})
-	if err != nil {
-		return "", err
+	res := make(chan mv.MaybeString, 1)
+
+	go func() {
+		service, err := aws.New(region, &aws.IAMConfig{
+			RoleARN:      conf.IAMRoleARN,
+			MFADeviceARN: conf.IAMDeviceARN,
+			MFACode:      conf.IAMCode,
+		})
+		if err != nil {
+			res <- mv.MaybeString{
+				Result: "",
+				Error:  err,
+			}
+		}
+		img, err := awsWrapImage(ctx, service, region, id, conf)
+		res <- mv.MaybeString{
+			Result: img,
+			Error:  err,
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		// Context was cancelled, cleanup
+		mv.Cleanup(false)
+		return "", mv.ErrInterupted
+	case r := <-res:
+		mv.Cleanup(r.Error == nil)
+		return r.Result, r.Error
 	}
-	return awsWrapImage(service, region, id, conf)
 }
 
-func getMetavisorAMI(version, region string) (string, error) {
+func getMetavisorAMI(ctx context.Context, version, region string) (string, error) {
 	// If no version was specified, get the latest version
 	if version == "" {
 		logging.Info("Getting the latest Metavisor version...")
-		v, err := getLatestMVVersion()
+		v, err := getLatestMVVersion(ctx)
 		if err != nil {
 			return "", err
 		}
 		version = v
 	}
 	logging.Infof("Using Metavisor version %s", version)
-	return getAMIForVersion(version, region)
+	return getAMIForVersion(ctx, version, region)
 }
 
-func getAMIForVersion(version, region string) (string, error) {
-	mapping, err := mv.GetImagesForVersionAWS(version)
+func getAMIForVersion(ctx context.Context, version, region string) (string, error) {
+	mapping, err := mv.GetImagesForVersionAWS(ctx, version)
 	if err != nil {
 		logging.Error("Could not find AMIs for the specified MV version")
 		return "", err
@@ -127,8 +169,8 @@ func getAMIForVersion(version, region string) (string, error) {
 	return ami, nil
 }
 
-func getLatestMVVersion() (string, error) {
-	versions, err := mv.GetMetavisorVersions()
+func getLatestMVVersion(ctx context.Context) (string, error) {
+	versions, err := mv.GetMetavisorVersions(ctx)
 	if err != nil {
 		return "", err
 	}
