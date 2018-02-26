@@ -21,6 +21,8 @@ endif
 %-darwin : override GO_OS = $(GOOS_DARWIN)
 %-windows : override GO_OS = $(GOOS_WINDOWS)
 
+all: build
+
 deps:
 	dep ensure
 
