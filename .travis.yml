@@ -11,7 +11,7 @@ before_install:
 
 script:
   # First run tests
-  - go test -v -race ./...
+  - make test
   # Then attempt to build for all platforms
   - make build-all
 
