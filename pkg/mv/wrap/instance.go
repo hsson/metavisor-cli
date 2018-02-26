@@ -40,8 +40,8 @@ func awsWrapInstance(ctx context.Context, awsSvc aws.Service, region, id string,
 	if err != nil {
 		return "", err
 	}
-	mvVolumeSIze := mvSnapshot.SizeGB()
-	logging.Debugf("MV snapshot is %d GiB", mvVolumeSIze)
+	mvVolumeSize := mvSnapshot.SizeGB()
+	logging.Debugf("MV snapshot is %d GiB", mvVolumeSize)
 
 	// Stop the instance so that devices can be modified
 	logging.Info("Stopping the instance")
