@@ -1,6 +1,7 @@
 package mv
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -57,7 +58,7 @@ func (v byVersion) Less(i, j int) bool {
 	return b1 <= b2
 }
 
-func awsGetMVVersions() (MetavisorVersions, error) {
+func awsGetMVVersions(ctx context.Context) (MetavisorVersions, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(prodBucketRegion),
 	})
@@ -65,11 +66,11 @@ func awsGetMVVersions() (MetavisorVersions, error) {
 		return MetavisorVersions{}, err
 	}
 	s3C := s3.New(sess)
-	mvs, err := listAllMetavisors(s3C)
+	mvs, err := listAllMetavisors(ctx, s3C)
 	if err != nil {
 		return MetavisorVersions{}, err
 	}
-	latest, err := determineLatest(s3C, mvs)
+	latest, err := determineLatest(ctx, s3C, mvs)
 	if err != nil {
 		latest = ""
 	}
@@ -79,17 +80,20 @@ func awsGetMVVersions() (MetavisorVersions, error) {
 	}, nil
 }
 
-func listAllMetavisors(client *s3.S3) (mvVersions, error) {
-	out, err := client.ListObjectsV2(&s3.ListObjectsV2Input{
+func listAllMetavisors(ctx context.Context, client *s3.S3) (mvVersions, error) {
+	input := &s3.ListObjectsV2Input{
 		Bucket: aws.String(prodBucketName),
 		Prefix: aws.String(mvPrefix),
+	}
+	versions := map[string]struct{}{}
+	err := client.ListObjectsV2PagesWithContext(ctx, input, func(out *s3.ListObjectsV2Output, last bool) bool {
+		for _, obj := range out.Contents {
+			versions[strings.Split(*obj.Key, "/")[0]] = struct{}{}
+		}
+		return true
 	})
 	if err != nil {
 		return nil, err
-	}
-	versions := map[string]struct{}{}
-	for _, obj := range out.Contents {
-		versions[strings.Split(*obj.Key, "/")[0]] = struct{}{}
 	}
 	versionSlice := mvVersions{}
 	for key := range versions {
@@ -99,13 +103,13 @@ func listAllMetavisors(client *s3.S3) (mvVersions, error) {
 	return versionSlice, nil
 }
 
-func determineLatest(client *s3.S3, allVersions []string) (string, error) {
-	latest, err := getObjectBody(client, latestKey)
+func determineLatest(ctx context.Context, client *s3.S3, allVersions []string) (string, error) {
+	latest, err := getObjectBody(ctx, client, latestKey)
 	if err != nil {
 		return "", err
 	}
 	for i := range allVersions {
-		v, err := getObjectBody(client, fmt.Sprintf("%s%s", allVersions[i], keySuffix))
+		v, err := getObjectBody(ctx, client, fmt.Sprintf("%s%s", allVersions[i], keySuffix))
 		if err != nil {
 			return "", err
 		}
@@ -116,11 +120,12 @@ func determineLatest(client *s3.S3, allVersions []string) (string, error) {
 	return "", errors.New("No latest version")
 }
 
-func getObjectBody(client *s3.S3, key string) (map[string]string, error) {
-	latest, err := client.GetObject(&s3.GetObjectInput{
+func getObjectBody(ctx context.Context, client *s3.S3, key string) (map[string]string, error) {
+	input := &s3.GetObjectInput{
 		Bucket: aws.String(prodBucketName),
 		Key:    aws.String(latestKey),
-	})
+	}
+	latest, err := client.GetObjectWithContext(ctx, input)
 	if err != nil {
 		return nil, err
 	}

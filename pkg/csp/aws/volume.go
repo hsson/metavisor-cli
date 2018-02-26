@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"context"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -13,7 +14,7 @@ type volume struct {
 	resource
 }
 
-func (a *awsService) CreateVolume(sourceSnapshotID, volumeType, zone string, size int64) (Volume, error) {
+func (a *awsService) CreateVolume(ctx context.Context, sourceSnapshotID, volumeType, zone string, size int64) (Volume, error) {
 	if strings.TrimSpace(sourceSnapshotID) == "" {
 		return nil, ErrInvalidID
 	}
@@ -35,7 +36,7 @@ func (a *awsService) CreateVolume(sourceSnapshotID, volumeType, zone string, siz
 		Size:             aws.Int64(size),
 		AvailabilityZone: aws.String(zone),
 	}
-	vol, err := a.client.CreateVolume(input)
+	vol, err := a.client.CreateVolumeWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -48,7 +49,7 @@ func (a *awsService) CreateVolume(sourceSnapshotID, volumeType, zone string, siz
 			id: *vol.VolumeId,
 		},
 	}
-	err = a.client.WaitUntilVolumeAvailable(&ec2.DescribeVolumesInput{
+	err = a.client.WaitUntilVolumeAvailableWithContext(ctx, &ec2.DescribeVolumesInput{
 		VolumeIds: aws.StringSlice([]string{res.ID()}),
 	})
 	if err != nil {
@@ -61,7 +62,28 @@ func (a *awsService) CreateVolume(sourceSnapshotID, volumeType, zone string, siz
 	return res, nil
 }
 
-func (a *awsService) DetachVolume(volumeID, instanceID, deviceName string) error {
+func (a *awsService) DeleteVolume(ctx context.Context, volumeID string) error {
+	if strings.TrimSpace(volumeID) == "" {
+		return ErrInvalidID
+	}
+	input := &ec2.DeleteVolumeInput{
+		VolumeId: aws.String(volumeID),
+	}
+	_, err := a.client.DeleteVolumeWithContext(ctx, input)
+	if err != nil {
+		aerr, ok := err.(awserr.Error)
+		if ok && aerr.Code() == accessDeniedErrorCode {
+			return ErrNotAllowed
+		} else if ok && strings.Contains(aerr.Code(), volumeNotFound) {
+			logging.Debug("Tried to delete non-existing volume")
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func (a *awsService) DetachVolume(ctx context.Context, volumeID, instanceID, deviceName string) error {
 	if strings.TrimSpace(volumeID) == "" || strings.TrimSpace(instanceID) == "" {
 		return ErrInvalidID
 	}
@@ -70,7 +92,7 @@ func (a *awsService) DetachVolume(volumeID, instanceID, deviceName string) error
 		InstanceId: aws.String(instanceID),
 		VolumeId:   aws.String(volumeID),
 	}
-	_, err := a.client.DetachVolume(input)
+	_, err := a.client.DetachVolumeWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -79,7 +101,7 @@ func (a *awsService) DetachVolume(volumeID, instanceID, deviceName string) error
 		return err
 	}
 	logging.Debug("Waiting for volume to be available after detach")
-	err = a.client.WaitUntilVolumeAvailable(&ec2.DescribeVolumesInput{
+	err = a.client.WaitUntilVolumeAvailableWithContext(ctx, &ec2.DescribeVolumesInput{
 		VolumeIds: aws.StringSlice([]string{volumeID}),
 	})
 	if err != nil {
@@ -92,7 +114,7 @@ func (a *awsService) DetachVolume(volumeID, instanceID, deviceName string) error
 	return nil
 }
 
-func (a *awsService) AttachVolume(volumeID, instanceID, deviceName string) error {
+func (a *awsService) AttachVolume(ctx context.Context, volumeID, instanceID, deviceName string) error {
 	if strings.TrimSpace(volumeID) == "" || strings.TrimSpace(instanceID) == "" {
 		return ErrInvalidID
 	}
@@ -101,7 +123,7 @@ func (a *awsService) AttachVolume(volumeID, instanceID, deviceName string) error
 		InstanceId: aws.String(instanceID),
 		VolumeId:   aws.String(volumeID),
 	}
-	_, err := a.client.AttachVolume(input)
+	_, err := a.client.AttachVolumeWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -110,7 +132,7 @@ func (a *awsService) AttachVolume(volumeID, instanceID, deviceName string) error
 		return err
 	}
 	logging.Debug("Waiting for volume to be in-use after attach")
-	err = a.client.WaitUntilVolumeInUse(&ec2.DescribeVolumesInput{
+	err = a.client.WaitUntilVolumeInUseWithContext(ctx, &ec2.DescribeVolumesInput{
 		VolumeIds: aws.StringSlice([]string{volumeID}),
 	})
 	if err != nil {

@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
+	"sync"
 
 	"github.com/brkt/metavisor-cli/pkg/logging"
 	"github.com/brkt/metavisor-cli/pkg/mv"
@@ -97,27 +100,28 @@ func main() {
 		logging.LogLevel = logging.LevelDebug
 	}
 
+	ctx := context.Background()
 	switch command {
 	case versionCommand.FullCommand():
-		showVersion()
+		runWithInterrupt(ctx, showVersion)
 		break
 	case listCommand.FullCommand():
-		listMetavisors()
+		runWithInterrupt(ctx, listMetavisors)
 		break
 	case awsWrapInstance.FullCommand():
-		wrapInstance()
+		runWithInterrupt(ctx, wrapInstance)
 		break
 	case awsWrapAMI.FullCommand():
-		wrapAMI()
+		runWithInterrupt(ctx, wrapAMI)
 		break
 	case awsShareLogs.FullCommand():
-		shareLogs()
+		runWithInterrupt(ctx, shareLogs)
 		break
 	}
 }
 
-func showVersion() {
-	versionInfo, err := mv.GetInfo()
+func showVersion(ctx context.Context) {
+	versionInfo, err := mv.GetInfo(ctx)
 	if err != nil {
 		// Could not fetch MV version. Log to debug and still show CLI version
 		logging.Debug("Could not determine latest MV version, only showing CLI version")
@@ -131,8 +135,8 @@ func showVersion() {
 	fmt.Println(output)
 }
 
-func listMetavisors() {
-	mvs, err := mv.GetMetavisorVersions()
+func listMetavisors(ctx context.Context) {
+	mvs, err := mv.GetMetavisorVersions(ctx)
 	if err != nil {
 		// Could not fetch available MV versions
 		logging.Fatal("Could not fetch available MV versions")
@@ -147,7 +151,37 @@ func listMetavisors() {
 	fmt.Println(output)
 }
 
-func wrapInstance() {
+func runWithInterrupt(ctx context.Context, f func(ctx context.Context)) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	interrupt := make(chan os.Signal)
+	signal.Notify(interrupt, os.Interrupt)
+	done := make(chan struct{})
+
+	var wg sync.WaitGroup
+	go func() {
+		wg.Add(1)
+		f(ctx)
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+		wg.Done()
+		break
+	case <-interrupt:
+		// User interrupted with ^C
+		logging.Warning("Execution interrupted")
+		cancel()
+		break
+	}
+
+	wg.Wait()
+	return
+}
+
+func wrapInstance(ctx context.Context) {
 	conf := wrap.Config{
 		Token:            *awsWrapInstanceToken,
 		MetavisorVersion: *awsWrapInstanceVersion,
@@ -157,7 +191,7 @@ func wrapInstance() {
 		IAMDeviceARN:     *awsCommandIAMMFA,
 		IAMCode:          *awsCommandIAMCode,
 	}
-	inst, err := wrap.Instance(*awsWrapInstanceRegion, *awsWrapInstanceID, conf)
+	inst, err := wrap.Instance(ctx, *awsWrapInstanceRegion, *awsWrapInstanceID, conf)
 	if err != nil {
 		// Could not wrap instance, show error
 		logging.Fatal(err)
@@ -167,7 +201,7 @@ func wrapInstance() {
 	logging.Output(inst)
 }
 
-func wrapAMI() {
+func wrapAMI(ctx context.Context) {
 	conf := wrap.Config{
 		Token:            *awsWrapAMIToken,
 		MetavisorVersion: *awsWrapAMIVersion,
@@ -177,7 +211,7 @@ func wrapAMI() {
 		IAMDeviceARN:     *awsCommandIAMMFA,
 		IAMCode:          *awsCommandIAMCode,
 	}
-	ami, err := wrap.Image(*awsWrapAMIRegion, *awsWrapAMIID, conf)
+	ami, err := wrap.Image(ctx, *awsWrapAMIRegion, *awsWrapAMIID, conf)
 	if err != nil {
 		// Could not wrap image, show error
 		logging.Fatal(err)
@@ -187,8 +221,19 @@ func wrapAMI() {
 	logging.Output(ami)
 }
 
-func shareLogs() {
-	logs, err := share.LogsAWS(*awsShareLogsRegion, *awsShareLogsID, *awsShareLogsOutPath, *awsShareLogsKeyName, *awsShareLogsKeyPath, *awsShareLogsBastionHost, *awsShareLogsBastionUser, *awsShareLogsBastionKey, *awsCommandIAM, *awsCommandIAMMFA, *awsCommandIAMCode)
+func shareLogs(ctx context.Context) {
+	conf := share.Config{
+		LogsPath:              *awsShareLogsOutPath,
+		AWSKeyName:            *awsShareLogsKeyName,
+		PrivateKeyPath:        *awsShareLogsKeyPath,
+		BastionHost:           *awsShareLogsBastionHost,
+		BastionUsername:       *awsShareLogsBastionUser,
+		BastionPrivateKeyPath: *awsShareLogsBastionKey,
+		IAMRoleARN:            *awsCommandIAM,
+		IAMDeviceARN:          *awsCommandIAMMFA,
+		IAMCode:               *awsCommandIAMCode,
+	}
+	logs, err := share.LogsAWS(ctx, *awsShareLogsRegion, *awsShareLogsID, conf)
 	if err != nil {
 		// Could not get logs, show error
 		logging.Fatal(err)

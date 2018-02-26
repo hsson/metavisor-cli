@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -21,6 +22,7 @@ const (
 	keyNotFoundErrorCode  = "InvalidKeyPair.NotFound"
 	instanceIDErrorCode   = "InvalidInstanceID"
 	amiIDErrorCode        = "InvalidAMIID"
+	volumeNotFound        = "InvalidVolumeID"
 	snapshotNotFound      = "InvalidSnapshot.NotFound"
 
 	genericVolumeType = "gp2"
@@ -73,47 +75,49 @@ var validVolumeTypes = []string{"gp2", "io1", "st1", "sc1", "standard"}
 // Service is a helper for doing common operations in AWS
 type Service interface {
 	// KeyPairExist will determine if a specified key pair exist in AWS or not
-	KeyPairExist(key string) (bool, error)
+	KeyPairExist(ctx context.Context, key string) (bool, error)
 	// CreateKeyPair will create a new key pair with the given name. If no errors
 	// occur, the new key material will be returned as a string
-	CreateKeyPair(name string) (string, error)
+	CreateKeyPair(ctx context.Context, name string) (string, error)
 	// RemoveKeyPair will remove the key pair with the specified name
-	RemoveKeyPair(name string) error
+	RemoveKeyPair(ctx context.Context, name string) error
 	// CreateSnapshot will create a snapshot with the given name, based on the specified
 	// volume. It can also wait for the snapshot to be ready before returning
-	CreateSnapshot(name, sourceVolumeID string) (Snapshot, error)
+	CreateSnapshot(ctx context.Context, name, sourceVolumeID string) (Snapshot, error)
 	// DeleteSnapshot will delete a snapshot with the given ID
-	DeleteSnapshot(snapshotID string) error
+	DeleteSnapshot(ctx context.Context, snapshotID string) error
 	// TagResources will attach the given tags to the given resources
-	TagResources(tags map[string]string, resourceID ...string) error
+	TagResources(ctx context.Context, tags map[string]string, resourceID ...string) error
 	// GetSnapshot returns the snapshot with the given ID
-	GetSnapshot(snapshotID string) (Snapshot, error)
+	GetSnapshot(ctx context.Context, snapshotID string) (Snapshot, error)
 	// GetInstance returns an instance representation of the instance with the given ID
-	GetInstance(instanceID string) (Instance, error)
+	GetInstance(ctx context.Context, instanceID string) (Instance, error)
 	// LaunchInstance will use a new instance with the specified attributes
-	LaunchInstance(image, instanceType, userData, keyName, instanceName string, extraDevices ...NewDevice) (Instance, error)
+	LaunchInstance(ctx context.Context, image, instanceType, userData, keyName, instanceName string, extraDevices ...NewDevice) (Instance, error)
 	// TerminateInstance will terminate the instance with the given ID
-	TerminateInstance(instanceID string) error
+	TerminateInstance(ctx context.Context, instanceID string) error
 	// StopInstance will stop the instance with the given ID
-	StopInstance(instanceID string) error
+	StopInstance(ctx context.Context, instanceID string) error
 	// StartInstance will start the instance with the given ID
-	StartInstance(instanceID string) error
+	StartInstance(ctx context.Context, instanceID string) error
 	// ModifyInstanceAttribute changes the specified attribute of an instance
-	ModifyInstanceAttribute(instanceID string, attr instanceAttribute, value interface{}) error
+	ModifyInstanceAttribute(ctx context.Context, instanceID string, attr instanceAttribute, value interface{}) error
 	// AwaitInstanceOK will block until the instance status is OK
-	AwaitInstanceOK(instanceID string) error
+	AwaitInstanceOK(ctx context.Context, instanceID string) error
 	// CreateImage will create a new AMI based on an instance
-	CreateImage(instanceID, name string) (string, error)
+	CreateImage(ctx context.Context, instanceID, name string) (string, error)
 	// GetImage returns the AMI with the given ID
-	GetImage(imageID string) (Image, error)
+	GetImage(ctx context.Context, imageID string) (Image, error)
 	// CreateVolume will create a new volume in AWS
-	CreateVolume(sourceSnapshotID, volumeType, zone string, size int64) (Volume, error)
+	CreateVolume(ctx context.Context, sourceSnapshotID, volumeType, zone string, size int64) (Volume, error)
+	// DeleteVolume will delete the specified volume
+	DeleteVolume(ctx context.Context, volumeID string) error
 	// DetachVolume will detach a specified volume in AWS
-	DetachVolume(volumeID, instanceID, deviceName string) error
+	DetachVolume(ctx context.Context, volumeID, instanceID, deviceName string) error
 	// AttachVolume will attach a specified volume to a specified instance in AWS
-	AttachVolume(volumeID, instanceID, deviceName string) error
+	AttachVolume(ctx context.Context, volumeID, instanceID, deviceName string) error
 	// DeleteInstanceDevicesOnTermination makes sure devices are deleted when instance is terminated
-	DeleteInstanceDevicesOnTermination(instanceID string) error
+	DeleteInstanceDevicesOnTermination(ctx context.Context, instanceID string) error
 }
 
 // NewDevice is can be passed when launching new instance to add extra
@@ -283,7 +287,7 @@ type awsService struct {
 	client *ec2.EC2
 }
 
-func (a *awsService) TagResources(tags map[string]string, resourceID ...string) error {
+func (a *awsService) TagResources(ctx context.Context, tags map[string]string, resourceID ...string) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -291,7 +295,7 @@ func (a *awsService) TagResources(tags map[string]string, resourceID ...string) 
 		Resources: aws.StringSlice(resourceID),
 		Tags:      mapToEC2Tags(tags),
 	}
-	_, err := a.client.CreateTags(input)
+	_, err := a.client.CreateTagsWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -302,11 +306,11 @@ func (a *awsService) TagResources(tags map[string]string, resourceID ...string) 
 	return nil
 }
 
-func (a *awsService) DeleteInstanceDevicesOnTermination(instanceID string) error {
+func (a *awsService) DeleteInstanceDevicesOnTermination(ctx context.Context, instanceID string) error {
 	if strings.TrimSpace(instanceID) == "" {
 		return ErrInvalidID
 	}
-	inst, err := a.GetInstance(instanceID)
+	inst, err := a.GetInstance(ctx, instanceID)
 	if err != nil {
 		return err
 	}
@@ -326,7 +330,7 @@ func (a *awsService) DeleteInstanceDevicesOnTermination(instanceID string) error
 		blockSpec = append(blockSpec, spec)
 	}
 	input.BlockDeviceMappings = blockSpec
-	_, err = a.client.ModifyInstanceAttribute(input)
+	_, err = a.client.ModifyInstanceAttributeWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {

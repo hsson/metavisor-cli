@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"context"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -8,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
-func (a *awsService) KeyPairExist(keyName string) (bool, error) {
+func (a *awsService) KeyPairExist(ctx context.Context, keyName string) (bool, error) {
 	if strings.TrimSpace(keyName) == "" {
 		return false, nil
 	}
@@ -17,7 +18,7 @@ func (a *awsService) KeyPairExist(keyName string) (bool, error) {
 		KeyNames: aws.StringSlice([]string{keyName}),
 	}
 
-	result, err := a.client.DescribeKeyPairs(inputFilter)
+	result, err := a.client.DescribeKeyPairsWithContext(ctx, inputFilter)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -33,17 +34,17 @@ func (a *awsService) KeyPairExist(keyName string) (bool, error) {
 	return false, nil
 }
 
-func (a *awsService) CreateKeyPair(name string) (string, error) {
+func (a *awsService) CreateKeyPair(ctx context.Context, name string) (string, error) {
 	if strings.TrimSpace(name) == "" {
 		return "", ErrInvalidName
 	}
-	if exist, _ := a.KeyPairExist(name); exist {
+	if exist, _ := a.KeyPairExist(ctx, name); exist {
 		return "", ErrInvalidName
 	}
 	input := &ec2.CreateKeyPairInput{
 		KeyName: aws.String(name),
 	}
-	result, err := a.client.CreateKeyPair(input)
+	result, err := a.client.CreateKeyPairWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -54,14 +55,14 @@ func (a *awsService) CreateKeyPair(name string) (string, error) {
 	return *result.KeyMaterial, nil
 }
 
-func (a *awsService) RemoveKeyPair(name string) error {
+func (a *awsService) RemoveKeyPair(ctx context.Context, name string) error {
 	if strings.TrimSpace(name) == "" {
 		return ErrInvalidName
 	}
 	input := &ec2.DeleteKeyPairInput{
 		KeyName: aws.String(name),
 	}
-	_, err := a.client.DeleteKeyPair(input)
+	_, err := a.client.DeleteKeyPairWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {

@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"context"
 	"encoding/base64"
 	"strings"
 	"time"
@@ -31,14 +32,14 @@ func (i *instance) AvailabilityZone() string         { return i.zone }
 func (i *instance) SriovNetSupport() string          { return i.sriovNetSupport }
 func (i *instance) ENASupport() bool                 { return i.enaSupport }
 
-func (a *awsService) GetInstance(instanceID string) (Instance, error) {
+func (a *awsService) GetInstance(ctx context.Context, instanceID string) (Instance, error) {
 	if strings.TrimSpace(instanceID) == "" {
 		return nil, ErrInstanceNonExisting
 	}
 	input := &ec2.DescribeInstancesInput{
 		InstanceIds: aws.StringSlice([]string{instanceID}),
 	}
-	out, err := a.client.DescribeInstances(input)
+	out, err := a.client.DescribeInstancesWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -90,12 +91,12 @@ func (a *awsService) GetInstance(instanceID string) (Instance, error) {
 	return nil, ErrInstanceNonExisting
 }
 
-func (a *awsService) LaunchInstance(imageID, instanceType, userData, keyName, instanceName string, extraDevices ...NewDevice) (Instance, error) {
+func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, userData, keyName, instanceName string, extraDevices ...NewDevice) (Instance, error) {
 	if !IsAMIID(imageID) {
 		return nil, ErrInvalidID
 	}
 	if strings.TrimSpace(keyName) != "" {
-		if keyExist, err := a.KeyPairExist(keyName); (err != nil && err != ErrNotAllowed) || (!keyExist && err == nil) {
+		if keyExist, err := a.KeyPairExist(ctx, keyName); (err != nil && err != ErrNotAllowed) || (!keyExist && err == nil) {
 			// If we don't have permission to list keys, we assume it exist and continue
 			if err == nil {
 				err = ErrKeyNonExisting
@@ -135,7 +136,7 @@ func (a *awsService) LaunchInstance(imageID, instanceType, userData, keyName, in
 		logging.Debug("Launching instance without key pair")
 	}
 
-	out, err := a.client.RunInstances(input)
+	out, err := a.client.RunInstancesWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -177,7 +178,7 @@ func (a *awsService) LaunchInstance(imageID, instanceType, userData, keyName, in
 			enaSupport:      enaSupport,
 		}
 		logging.Info("Waiting for instance to become ready...")
-		err := a.client.WaitUntilInstanceRunning(&ec2.DescribeInstancesInput{
+		err := a.client.WaitUntilInstanceRunningWithContext(ctx, &ec2.DescribeInstancesInput{
 			InstanceIds: aws.StringSlice([]string{res.ID()}),
 		})
 		if err != nil {
@@ -189,7 +190,7 @@ func (a *awsService) LaunchInstance(imageID, instanceType, userData, keyName, in
 			return nil, err
 		}
 		if strings.TrimSpace(instanceName) != "" {
-			err = a.TagResources(map[string]string{"Name": instanceName}, res.ID())
+			err = a.TagResources(ctx, map[string]string{"Name": instanceName}, res.ID())
 			if err == ErrNotAllowed {
 				logging.Warning("Insufficient IAM permissions to tag resource, skipping Name")
 				return res, nil
@@ -201,14 +202,14 @@ func (a *awsService) LaunchInstance(imageID, instanceType, userData, keyName, in
 	return nil, ErrFailedLaunchingInstance
 }
 
-func (a *awsService) StopInstance(instanceID string) error {
+func (a *awsService) StopInstance(ctx context.Context, instanceID string) error {
 	if strings.TrimSpace(instanceID) == "" {
 		return ErrInvalidName
 	}
 	input := &ec2.StopInstancesInput{
 		InstanceIds: aws.StringSlice([]string{instanceID}),
 	}
-	_, err := a.client.StopInstances(input)
+	_, err := a.client.StopInstancesWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -221,7 +222,7 @@ func (a *awsService) StopInstance(instanceID string) error {
 	}
 	// Wait for the instance to stop
 	logging.Info("Waiting for instance to stop...")
-	err = a.client.WaitUntilInstanceStopped(&ec2.DescribeInstancesInput{
+	err = a.client.WaitUntilInstanceStoppedWithContext(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: aws.StringSlice([]string{instanceID}),
 	})
 	if err != nil {
@@ -235,14 +236,14 @@ func (a *awsService) StopInstance(instanceID string) error {
 	return nil
 }
 
-func (a *awsService) StartInstance(instanceID string) error {
+func (a *awsService) StartInstance(ctx context.Context, instanceID string) error {
 	if strings.TrimSpace(instanceID) == "" {
 		return ErrInvalidName
 	}
 	input := &ec2.StartInstancesInput{
 		InstanceIds: aws.StringSlice([]string{instanceID}),
 	}
-	_, err := a.client.StartInstances(input)
+	_, err := a.client.StartInstancesWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -255,7 +256,7 @@ func (a *awsService) StartInstance(instanceID string) error {
 	}
 	// Wait for the instance to start
 	logging.Info("Waiting for instance to start...")
-	err = a.client.WaitUntilInstanceRunning(&ec2.DescribeInstancesInput{
+	err = a.client.WaitUntilInstanceRunningWithContext(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: aws.StringSlice([]string{instanceID}),
 	})
 	if err != nil {
@@ -269,14 +270,14 @@ func (a *awsService) StartInstance(instanceID string) error {
 	return nil
 }
 
-func (a *awsService) TerminateInstance(instanceID string) error {
+func (a *awsService) TerminateInstance(ctx context.Context, instanceID string) error {
 	if strings.TrimSpace(instanceID) == "" {
 		return ErrInvalidName
 	}
 	input := &ec2.TerminateInstancesInput{
 		InstanceIds: aws.StringSlice([]string{instanceID}),
 	}
-	_, err := a.client.TerminateInstances(input)
+	_, err := a.client.TerminateInstancesWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -290,7 +291,7 @@ func (a *awsService) TerminateInstance(instanceID string) error {
 	return nil
 }
 
-func (a *awsService) ModifyInstanceAttribute(instanceID string, attr instanceAttribute, value interface{}) error {
+func (a *awsService) ModifyInstanceAttribute(ctx context.Context, instanceID string, attr instanceAttribute, value interface{}) error {
 	if strings.TrimSpace(instanceID) == "" {
 		return ErrInvalidID
 	}
@@ -330,7 +331,7 @@ func (a *awsService) ModifyInstanceAttribute(instanceID string, attr instanceAtt
 	default:
 		return ErrInvalidInstanceAttr
 	}
-	_, err := a.client.ModifyInstanceAttribute(input)
+	_, err := a.client.ModifyInstanceAttributeWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
@@ -341,7 +342,7 @@ func (a *awsService) ModifyInstanceAttribute(instanceID string, attr instanceAtt
 	return nil
 }
 
-func (a *awsService) AwaitInstanceOK(instanceID string) error {
+func (a *awsService) AwaitInstanceOK(ctx context.Context, instanceID string) error {
 	if strings.TrimSpace(instanceID) == "" {
 		return ErrInstanceNonExisting
 	}
@@ -349,7 +350,7 @@ func (a *awsService) AwaitInstanceOK(instanceID string) error {
 		InstanceIds: aws.StringSlice([]string{instanceID}),
 	}
 	for {
-		out, err := a.client.DescribeInstanceStatus(input)
+		out, err := a.client.DescribeInstanceStatusWithContext(ctx, input)
 		if err != nil {
 			aerr, ok := err.(awserr.Error)
 			if ok && aerr.Code() == accessDeniedErrorCode {
