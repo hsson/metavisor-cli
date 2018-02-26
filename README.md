@@ -33,7 +33,7 @@ $ brew upgrade dep
 ```
 
 ## Using Docker
-If `go` or `dep` is not installed, and you still want to compile from the soruce code, Docker can be user. The following `make` targets are available:
+If Go or `dep` is not installed, and you still want to compile from the source code, Docker can be used. The following `make` targets are available:
 ### `make docker-build`
 Will compile a binary for your current system, e.g. if you're running Windows a binary called `metavisor.exe` will be created.
 

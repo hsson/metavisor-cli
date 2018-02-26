@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	// ErrInterupted is returned if the context is cancelled during execution
-	ErrInterupted = errors.New("the command was interupted")
+	// ErrInterrupted is returned if the context is cancelled during execution
+	ErrInterrupted = errors.New("the command was interrupted")
 )
 
 // MaybeString encapsulates a string and an eventual error

@@ -103,19 +103,19 @@ func main() {
 	ctx := context.Background()
 	switch command {
 	case versionCommand.FullCommand():
-		runWithInterupt(ctx, showVersion)
+		runWithInterrupt(ctx, showVersion)
 		break
 	case listCommand.FullCommand():
-		runWithInterupt(ctx, listMetavisors)
+		runWithInterrupt(ctx, listMetavisors)
 		break
 	case awsWrapInstance.FullCommand():
-		runWithInterupt(ctx, wrapInstance)
+		runWithInterrupt(ctx, wrapInstance)
 		break
 	case awsWrapAMI.FullCommand():
-		runWithInterupt(ctx, wrapAMI)
+		runWithInterrupt(ctx, wrapAMI)
 		break
 	case awsShareLogs.FullCommand():
-		runWithInterupt(ctx, shareLogs)
+		runWithInterrupt(ctx, shareLogs)
 		break
 	}
 }
@@ -151,12 +151,12 @@ func listMetavisors(ctx context.Context) {
 	fmt.Println(output)
 }
 
-func runWithInterupt(ctx context.Context, f func(ctx context.Context)) {
+func runWithInterrupt(ctx context.Context, f func(ctx context.Context)) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	interupt := make(chan os.Signal)
-	signal.Notify(interupt, os.Interrupt)
+	interrupt := make(chan os.Signal)
+	signal.Notify(interrupt, os.Interrupt)
 	done := make(chan struct{})
 
 	var wg sync.WaitGroup
@@ -170,9 +170,9 @@ func runWithInterupt(ctx context.Context, f func(ctx context.Context)) {
 	case <-done:
 		wg.Done()
 		break
-	case <-interupt:
-		// User interupted with ^C
-		logging.Warning("Execution interupted")
+	case <-interrupt:
+		// User interrupted with ^C
+		logging.Warning("Execution interrupted")
 		cancel()
 		break
 	}

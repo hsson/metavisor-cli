@@ -66,7 +66,7 @@ func LogsAWS(ctx context.Context, region, id string, conf Config) (string, error
 	case <-ctx.Done():
 		// Context was cancelled, cleanup
 		mv.Cleanup(false)
-		return "", mv.ErrInterupted
+		return "", mv.ErrInterrupted
 	case r := <-res:
 		mv.Cleanup(r.Error == nil)
 		return r.Result, r.Error
