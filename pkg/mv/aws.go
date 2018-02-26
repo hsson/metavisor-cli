@@ -123,17 +123,17 @@ func determineLatest(ctx context.Context, client *s3.S3, allVersions []string) (
 func getObjectBody(ctx context.Context, client *s3.S3, key string) (map[string]string, error) {
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(prodBucketName),
-		Key:    aws.String(latestKey),
+		Key:    aws.String(key),
 	}
-	latest, err := client.GetObjectWithContext(ctx, input)
+	amis, err := client.GetObjectWithContext(ctx, input)
 	if err != nil {
 		return nil, err
 	}
-	decoder := json.NewDecoder(latest.Body)
-	latestMap := make(map[string]string)
-	err = decoder.Decode(&latestMap)
+	decoder := json.NewDecoder(amis.Body)
+	amisMap := make(map[string]string)
+	err = decoder.Decode(&amisMap)
 	if err != nil {
 		return nil, err
 	}
-	return latestMap, nil
+	return amisMap, nil
 }
