@@ -24,7 +24,7 @@ type Info struct {
 	// MVVersion is the latest available MV Version
 	MVVersion string `json:"mv_version"`
 	// Success indicates whether fetching latest MV version succeeded or not
-	Success bool `json:"success"`
+	Success bool `json:"-"`
 }
 
 // FormatInfo will format the provided version information for display in
@@ -34,7 +34,9 @@ type Info struct {
 func FormatInfo(info *Info, withJSON bool) (string, error) {
 	if withJSON {
 		data, err := json.MarshalIndent(info, "", "\t")
-		logging.Errorf("Failed to marshal version information to JSON: %s", err)
+		if err != nil {
+			logging.Errorf("Failed to marshal version information to JSON: %s", err)
+		}
 		return string(data), err
 	}
 	mvVersion := info.MVVersion

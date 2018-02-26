@@ -121,10 +121,12 @@ func main() {
 }
 
 func showVersion(ctx context.Context) {
+	exit := 0
 	versionInfo, err := mv.GetInfo(ctx)
 	if err != nil {
 		// Could not fetch MV version. Log to debug and still show CLI version
 		logging.Debug("Could not determine latest MV version, only showing CLI version")
+		exit = 1
 	}
 	output, err := mv.FormatInfo(versionInfo, *versionWithJSON)
 	if err != nil {
@@ -133,6 +135,7 @@ func showVersion(ctx context.Context) {
 		return
 	}
 	fmt.Println(output)
+	os.Exit(exit)
 }
 
 func listMetavisors(ctx context.Context) {
