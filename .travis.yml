@@ -1,0 +1,34 @@
+language: go
+
+os: linux
+
+go:
+  - 1.10.x
+
+before_install:
+  # Get dep to install dependencies
+  - go get github.com/golang/dep/...
+
+script:
+  # First run tests
+  - go test -v -race ./...
+  # Then attempt to build for all platforms
+  - make build-all
+
+# If a tag is pushed, create a release draft and attach
+# the build artifacts
+deploy:
+  provider: releases
+  api_key: $GITHUB_TOKEN
+  draft: true
+  name: metavisor-cli $TRAVIS_TAG
+  body: Automated release from Travis CI
+  tag_name: $TRAVIS_TAG
+  target_commitish: $TRAVIS_COMMIT
+  file:
+    - metavisor-linux
+    - metavisor-darwin
+    - metavisor-windows.exe
+  skip_cleanup: true
+  on:
+    tags: true
