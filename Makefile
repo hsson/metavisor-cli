@@ -23,6 +23,9 @@ endif
 
 all: build
 
+test: deps
+	go test -race ./...
+
 deps:
 	dep ensure
 
