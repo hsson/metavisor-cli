@@ -120,7 +120,7 @@ func awsShareLogs(ctx context.Context, region, id string, conf Config) (string, 
 		}
 		mv.QueueCleanup(func() {
 			logging.Info("Deleting temporary AWS key pair")
-			err := awsSvc.RemoveKeyPair(ctx, randomName)
+			err := awsSvc.RemoveKeyPair(context.Background(), randomName)
 			if err != nil {
 				logging.Errorf("Failed to clean up key pair in AWS: %s", randomName)
 				logging.Debugf("Error when deleting key pair in AWS: %s", err)
@@ -177,7 +177,7 @@ func awsShareLogs(ctx context.Context, region, id string, conf Config) (string, 
 	}
 	mv.QueueCleanup(func() {
 		logging.Infof("Terminating temporary instance %s", instance.ID())
-		err := awsSvc.TerminateInstance(ctx, instance.ID())
+		err := awsSvc.TerminateInstance(context.Background(), instance.ID())
 		if err != nil {
 			logging.Errorf("Failed to cleanup instance: %s", instance.ID())
 			logging.Debugf("Got error when terminating instance: %s", err)

@@ -41,9 +41,10 @@ func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, co
 	mv.QueueCleanup(func() {
 		// Finally clean up temporary instance
 		logging.Info("Cleaning up temporary instance")
-		err = awsSvc.TerminateInstance(ctx, inst.ID())
+		err = awsSvc.TerminateInstance(context.Background(), inst.ID())
 		if err != nil {
 			logging.Warningf("Failed to cleanup temporary instance %s", inst.ID())
+			logging.Debugf("Error when cleaning up instance: %s", err)
 		}
 		logging.Infof("Instance %s terminated", inst.ID())
 	}, false)

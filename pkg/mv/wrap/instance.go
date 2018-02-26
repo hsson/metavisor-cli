@@ -45,7 +45,11 @@ func awsWrapInstance(ctx context.Context, awsSvc aws.Service, region, id string,
 
 	// Stop the instance so that devices can be modified
 	logging.Info("Stopping the instance")
-	awsSvc.StopInstance(ctx, id)
+	err = awsSvc.StopInstance(ctx, id)
+	if err != nil {
+		// Could not stop the instance
+		return "", err
+	}
 	logging.Info("Instance stopped")
 
 	// Set userdata on instance based on parameters
