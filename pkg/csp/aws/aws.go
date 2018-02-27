@@ -93,7 +93,7 @@ type Service interface {
 	// GetInstance returns an instance representation of the instance with the given ID
 	GetInstance(ctx context.Context, instanceID string) (Instance, error)
 	// LaunchInstance will use a new instance with the specified attributes
-	LaunchInstance(ctx context.Context, image, instanceType, userData, keyName, instanceName string, extraDevices ...NewDevice) (Instance, error)
+	LaunchInstance(ctx context.Context, image, instanceType, userData, keyName string, extraDevices ...NewDevice) (Instance, error)
 	// TerminateInstance will terminate the instance with the given ID
 	TerminateInstance(ctx context.Context, instanceID string) error
 	// StopInstance will stop the instance with the given ID
@@ -104,10 +104,16 @@ type Service interface {
 	ModifyInstanceAttribute(ctx context.Context, instanceID string, attr instanceAttribute, value interface{}) error
 	// AwaitInstanceOK will block until the instance status is OK
 	AwaitInstanceOK(ctx context.Context, instanceID string) error
+	// AwaitInstanceRunning will block until instance is running
+	AwaitInstanceRunning(ctx context.Context, instanceID string) error
+	// AwaitInstanceStopped will block until instance is stopped
+	AwaitInstanceStopped(ctx context.Context, instanceID string) error
 	// CreateImage will create a new AMI based on an instance
 	CreateImage(ctx context.Context, instanceID, name string) (string, error)
 	// GetImage returns the AMI with the given ID
 	GetImage(ctx context.Context, imageID string) (Image, error)
+	// AwaitImageAvailable will block until image is available
+	AwaitImageAvailable(ctx context.Context, imageID string) error
 	// CreateVolume will create a new volume in AWS
 	CreateVolume(ctx context.Context, sourceSnapshotID, volumeType, zone string, size int64) (Volume, error)
 	// DeleteVolume will delete the specified volume
@@ -116,6 +122,10 @@ type Service interface {
 	DetachVolume(ctx context.Context, volumeID, instanceID, deviceName string) error
 	// AttachVolume will attach a specified volume to a specified instance in AWS
 	AttachVolume(ctx context.Context, volumeID, instanceID, deviceName string) error
+	// AwaitVolumeAvailable will block until volume is available
+	AwaitVolumeAvailable(ctx context.Context, volumeID string) error
+	// AwaitVolumeInUse will block until volume is in-use
+	AwaitVolumeInUse(ctx context.Context, volumeID string) error
 	// DeleteInstanceDevicesOnTermination makes sure devices are deleted when instance is terminated
 	DeleteInstanceDevicesOnTermination(ctx context.Context, instanceID string) error
 }

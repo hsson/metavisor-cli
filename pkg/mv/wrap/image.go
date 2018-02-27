@@ -3,6 +3,7 @@ package wrap
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/brkt/metavisor-cli/pkg/csp/aws"
@@ -28,7 +29,7 @@ func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, co
 	// Launch a new instance
 	logging.Info("Launching temporary wrapper instance")
 	instanceName := "Temporary-Metavisor-wrapper-instance"
-	inst, err := awsSvc.LaunchInstance(ctx, id, aws.LargerInstanceType, "", "", instanceName)
+	inst, err := awsSvc.LaunchInstance(ctx, id, aws.LargerInstanceType, "", "")
 	if err != nil {
 		switch err {
 		case aws.ErrNotAllowed:
@@ -48,7 +49,27 @@ func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, co
 		}
 		logging.Infof("Instance %s terminated", inst.ID())
 	}, false)
+	logging.Infof("Launched instance with ID: %s", inst.ID())
+	logging.Info("Waiting for instance to become ready...")
+	err = awsSvc.AwaitInstanceRunning(ctx, inst.ID())
+	if err != nil {
+		// Instance never became ready
+		if err == aws.ErrNotAllowed {
+			logging.Error("Not enough IAM permissions to see instance status")
+		} else {
+			logging.Error("Instance never got ready")
+		}
+		return "", err
+	}
 	logging.Info("Instance is ready")
+	if strings.TrimSpace(instanceName) != "" {
+		err = awsSvc.TagResources(ctx, map[string]string{"Name": instanceName}, inst.ID())
+		if err == aws.ErrNotAllowed {
+			logging.Warning("Insufficient IAM permissions to tag resource, skipping Name")
+		} else if err != nil {
+			logging.Errorf("Unexpected error occured while trying to set name on instance: %s", err)
+		}
+	}
 
 	// Then wrap the instance
 	logging.Info("Wrapping the temporary instance with Metavisor")
@@ -82,6 +103,13 @@ func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, co
 		logging.Error("Failed to create new AMI")
 		return "", err
 	}
-
+	logging.Infof("Created AMI: %s", ami)
+	logging.Info("Waiting for image to become available")
+	err = awsSvc.AwaitImageAvailable(ctx, ami)
+	if err != nil {
+		logging.Error("Image never became available")
+		return "", err
+	}
+	logging.Info("Image is available")
 	return ami, nil
 }

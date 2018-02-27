@@ -49,16 +49,6 @@ func (a *awsService) CreateVolume(ctx context.Context, sourceSnapshotID, volumeT
 			id: *vol.VolumeId,
 		},
 	}
-	err = a.client.WaitUntilVolumeAvailableWithContext(ctx, &ec2.DescribeVolumesInput{
-		VolumeIds: aws.StringSlice([]string{res.ID()}),
-	})
-	if err != nil {
-		aerr, ok := err.(awserr.Error)
-		if ok && aerr.Code() == accessDeniedErrorCode {
-			return nil, ErrNotAllowed
-		}
-		return nil, err
-	}
 	return res, nil
 }
 
@@ -101,17 +91,7 @@ func (a *awsService) DetachVolume(ctx context.Context, volumeID, instanceID, dev
 		return err
 	}
 	logging.Debug("Waiting for volume to be available after detach")
-	err = a.client.WaitUntilVolumeAvailableWithContext(ctx, &ec2.DescribeVolumesInput{
-		VolumeIds: aws.StringSlice([]string{volumeID}),
-	})
-	if err != nil {
-		aerr, ok := err.(awserr.Error)
-		if ok && aerr.Code() == accessDeniedErrorCode {
-			return ErrNotAllowed
-		}
-		return err
-	}
-	return nil
+	return a.AwaitVolumeAvailable(ctx, volumeID)
 }
 
 func (a *awsService) AttachVolume(ctx context.Context, volumeID, instanceID, deviceName string) error {
@@ -132,9 +112,35 @@ func (a *awsService) AttachVolume(ctx context.Context, volumeID, instanceID, dev
 		return err
 	}
 	logging.Debug("Waiting for volume to be in-use after attach")
-	err = a.client.WaitUntilVolumeInUseWithContext(ctx, &ec2.DescribeVolumesInput{
+	return a.AwaitVolumeInUse(ctx, volumeID)
+}
+
+func (a *awsService) AwaitVolumeAvailable(ctx context.Context, volumeID string) error {
+	if strings.TrimSpace(volumeID) == "" {
+		return ErrInvalidID
+	}
+	input := &ec2.DescribeVolumesInput{
 		VolumeIds: aws.StringSlice([]string{volumeID}),
-	})
+	}
+	err := a.client.WaitUntilVolumeAvailableWithContext(ctx, input)
+	if err != nil {
+		aerr, ok := err.(awserr.Error)
+		if ok && aerr.Code() == accessDeniedErrorCode {
+			return ErrNotAllowed
+		}
+		return err
+	}
+	return nil
+}
+
+func (a *awsService) AwaitVolumeInUse(ctx context.Context, volumeID string) error {
+	if strings.TrimSpace(volumeID) == "" {
+		return ErrInvalidID
+	}
+	input := &ec2.DescribeVolumesInput{
+		VolumeIds: aws.StringSlice([]string{volumeID}),
+	}
+	err := a.client.WaitUntilVolumeInUseWithContext(ctx, input)
 	if err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {

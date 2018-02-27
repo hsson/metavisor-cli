@@ -417,3 +417,5 @@ metavisor-linux
 metavisor-darwin
 metavisor-windows.exe
 metavisor.exe
+
+mv-logs.tar.gz

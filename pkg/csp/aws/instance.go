@@ -91,7 +91,7 @@ func (a *awsService) GetInstance(ctx context.Context, instanceID string) (Instan
 	return nil, ErrInstanceNonExisting
 }
 
-func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, userData, keyName, instanceName string, extraDevices ...NewDevice) (Instance, error) {
+func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, userData, keyName string, extraDevices ...NewDevice) (Instance, error) {
 	if !IsAMIID(imageID) {
 		return nil, ErrInvalidID
 	}
@@ -177,25 +177,6 @@ func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, 
 			sriovNetSupport: sriovSupport,
 			enaSupport:      enaSupport,
 		}
-		logging.Info("Waiting for instance to become ready...")
-		err := a.client.WaitUntilInstanceRunningWithContext(ctx, &ec2.DescribeInstancesInput{
-			InstanceIds: aws.StringSlice([]string{res.ID()}),
-		})
-		if err != nil {
-			aerr, ok := err.(awserr.Error)
-			if ok && aerr.Code() == accessDeniedErrorCode {
-				return nil, ErrNotAllowed
-			}
-			logging.Info("Instance never became ready")
-			return nil, err
-		}
-		if strings.TrimSpace(instanceName) != "" {
-			err = a.TagResources(ctx, map[string]string{"Name": instanceName}, res.ID())
-			if err == ErrNotAllowed {
-				logging.Warning("Insufficient IAM permissions to tag resource, skipping Name")
-				return res, nil
-			}
-		}
 		return res, nil
 	}
 	// If this is reached, we never launched any instance
@@ -220,19 +201,6 @@ func (a *awsService) StopInstance(ctx context.Context, instanceID string) error 
 		}
 		return err
 	}
-	// Wait for the instance to stop
-	logging.Info("Waiting for instance to stop...")
-	err = a.client.WaitUntilInstanceStoppedWithContext(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: aws.StringSlice([]string{instanceID}),
-	})
-	if err != nil {
-		aerr, ok := err.(awserr.Error)
-		if ok && aerr.Code() == accessDeniedErrorCode {
-			return ErrNotAllowed
-		}
-		logging.Error("Instance never stopped")
-		return err
-	}
 	return nil
 }
 
@@ -252,19 +220,6 @@ func (a *awsService) StartInstance(ctx context.Context, instanceID string) error
 			logging.Error("Attempted to start non-existing instance")
 			return ErrInstanceNonExisting
 		}
-		return err
-	}
-	// Wait for the instance to start
-	logging.Info("Waiting for instance to start...")
-	err = a.client.WaitUntilInstanceRunningWithContext(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: aws.StringSlice([]string{instanceID}),
-	})
-	if err != nil {
-		aerr, ok := err.(awserr.Error)
-		if ok && aerr.Code() == accessDeniedErrorCode {
-			return ErrNotAllowed
-		}
-		logging.Error("Instance never got ready")
 		return err
 	}
 	return nil
@@ -380,6 +335,42 @@ func (a *awsService) AwaitInstanceOK(ctx context.Context, instanceID string) err
 			logging.Debug("Still waiting for instance to be OK...")
 			time.Sleep(20 * time.Second)
 		}
+	}
+	return nil
+}
+
+func (a *awsService) AwaitInstanceRunning(ctx context.Context, instanceID string) error {
+	if strings.TrimSpace(instanceID) == "" {
+		return ErrInvalidName
+	}
+	input := &ec2.DescribeInstancesInput{
+		InstanceIds: aws.StringSlice([]string{instanceID}),
+	}
+	err := a.client.WaitUntilInstanceRunningWithContext(ctx, input)
+	if err != nil {
+		aerr, ok := err.(awserr.Error)
+		if ok && aerr.Code() == accessDeniedErrorCode {
+			return ErrNotAllowed
+		}
+		return err
+	}
+	return nil
+}
+
+func (a *awsService) AwaitInstanceStopped(ctx context.Context, instanceID string) error {
+	if strings.TrimSpace(instanceID) == "" {
+		return ErrInvalidName
+	}
+	input := &ec2.DescribeInstancesInput{
+		InstanceIds: aws.StringSlice([]string{instanceID}),
+	}
+	err := a.client.WaitUntilInstanceStoppedWithContext(ctx, input)
+	if err != nil {
+		aerr, ok := err.(awserr.Error)
+		if ok && aerr.Code() == accessDeniedErrorCode {
+			return ErrNotAllowed
+		}
+		return err
 	}
 	return nil
 }
