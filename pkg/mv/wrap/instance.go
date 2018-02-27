@@ -44,10 +44,21 @@ func awsWrapInstance(ctx context.Context, awsSvc aws.Service, region, id string,
 	logging.Debugf("MV snapshot is %d GiB", mvVolumeSize)
 
 	// Stop the instance so that devices can be modified
-	logging.Info("Stopping the instance")
+	logging.Infof("Stopping the instance: %s", id)
 	err = awsSvc.StopInstance(ctx, id)
 	if err != nil {
 		// Could not stop the instance
+		return "", err
+	}
+	logging.Info("Waiting for instance to stop...")
+	err = awsSvc.AwaitInstanceStopped(ctx, id)
+	if err != nil {
+		// Instance never became ready
+		if err == aws.ErrNotAllowed {
+			logging.Error("Not enough IAM permissions to see instance status")
+		} else {
+			logging.Error("Instance never stopped")
+		}
 		return "", err
 	}
 	logging.Info("Instance stopped")
@@ -80,6 +91,13 @@ func awsWrapInstance(ctx context.Context, awsSvc aws.Service, region, id string,
 		}
 	}, true)
 	logging.Debugf("Created MV root volume %s", mvVol.ID())
+	logging.Info("Waiting for for volume to be available...")
+	err = awsSvc.AwaitVolumeAvailable(ctx, mvVol.ID())
+	if err != nil {
+		logging.Error("Volume never became available")
+		return "", err
+	}
+	logging.Info("Volume is available")
 
 	// Move guest volume and attach MV volume as root device
 	inst, err = awsShuffleInstanceVolumes(ctx, awsSvc, inst, mvVol.ID())
@@ -246,13 +264,24 @@ func awsEnableENASupport(ctx context.Context, service aws.Service, instance aws.
 
 func awsFinalizeInstance(ctx context.Context, service aws.Service, instance aws.Instance) error {
 	// Wrapping is complete, start the instance again
-	logging.Info("Starting instance again")
+	logging.Infof("Starting instance %s again", instance.ID())
 	err := service.StartInstance(ctx, instance.ID())
 	if err != nil {
 		logging.Error("Failed to start instance after wrapping it with Metavisor")
 		return err
 	}
-
+	logging.Info("Waiting for instance to become ready...")
+	err = service.AwaitInstanceRunning(ctx, instance.ID())
+	if err != nil {
+		// Instance never became ready
+		if err == aws.ErrNotAllowed {
+			logging.Error("Not enough IAM permissions to see instance status")
+		} else {
+			logging.Error("Instance never got ready")
+		}
+		return err
+	}
+	logging.Info("Instance is ready")
 	// The DeleteOnTerminate attribute gets reset when detaching stuff, make sure
 	// it's enabled again.
 	logging.Debug("Setting instance devices to delete on termination")

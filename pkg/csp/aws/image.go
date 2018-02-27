@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/brkt/metavisor-cli/pkg/logging"
 )
 
 type image struct {
@@ -40,18 +39,6 @@ func (a *awsService) CreateImage(ctx context.Context, instanceID, name string) (
 		if ok && strings.Contains(aerr.Code(), instanceIDErrorCode) {
 			return "", ErrInstanceNonExisting
 		}
-		return "", err
-	}
-	logging.Info("Waiting for image to become available...")
-	err = a.client.WaitUntilImageAvailableWithContext(ctx, &ec2.DescribeImagesInput{
-		ImageIds: aws.StringSlice([]string{*out.ImageId}),
-	})
-	if err != nil {
-		aerr, ok := err.(awserr.Error)
-		if ok && aerr.Code() == accessDeniedErrorCode {
-			return "", ErrNotAllowed
-		}
-		logging.Error("AMI never became available")
 		return "", err
 	}
 	return *out.ImageId, nil
@@ -97,6 +84,24 @@ func (a *awsService) GetImage(ctx context.Context, imageID string) (Image, error
 	}
 	// If we got this far, the AMI doesn't exist
 	return nil, ErrImageNonExisting
+}
+
+func (a *awsService) AwaitImageAvailable(ctx context.Context, imageID string) error {
+	if strings.TrimSpace(imageID) == "" {
+		return ErrImageNonExisting
+	}
+	input := &ec2.DescribeImagesInput{
+		ImageIds: aws.StringSlice([]string{imageID}),
+	}
+	err := a.client.WaitUntilImageAvailableWithContext(ctx, input)
+	if err != nil {
+		aerr, ok := err.(awserr.Error)
+		if ok && aerr.Code() == accessDeniedErrorCode {
+			return ErrNotAllowed
+		}
+		return err
+	}
+	return nil
 }
 
 func imageBlockToMap(blockMapping []*ec2.BlockDeviceMapping) map[string]string {
