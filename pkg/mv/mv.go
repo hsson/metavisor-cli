@@ -44,6 +44,9 @@ func QueueCleanup(f func(), onlyOnFail bool) {
 
 // Cleanup will run all queued cleanup functions
 func Cleanup(success bool) {
+	if stackedCleanups == nil {
+		return
+	}
 	cleaned := false
 	for stackedCleanups.Len() != 0 {
 		f, err := stackedCleanups.Pop()
