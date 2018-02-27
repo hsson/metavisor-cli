@@ -91,7 +91,7 @@ func awsShareLogs(ctx context.Context, region, id string, conf Config) (string, 
 		return "", err
 	}
 
-	keyExist, err := awsSvc.KeyPairExist(ctx, conf.PrivateKeyPath)
+	keyExist, err := awsSvc.KeyPairExist(ctx, conf.AWSKeyName)
 	if err != nil {
 		if err == aws.ErrNotAllowed {
 			// Not allowed to check if key exist, assume it's correct and continue
