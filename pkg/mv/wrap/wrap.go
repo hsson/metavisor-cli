@@ -19,6 +19,7 @@ type Config struct {
 	IAMRoleARN       string
 	IAMDeviceARN     string
 	IAMCode          string
+	SubnetID         string
 }
 
 const (

@@ -47,6 +47,7 @@ type Config struct {
 	IAMRoleARN            string
 	IAMDeviceARN          string
 	IAMCode               string
+	SubnetID              string
 }
 
 // LogsAWS will get the MV logs of an instance or snapshot in AWS and return
@@ -76,6 +77,11 @@ func LogsAWS(ctx context.Context, region, id string, conf Config) (string, error
 // TODO: Refactor this huge function...
 func awsShareLogs(ctx context.Context, region, id string, conf Config) (string, error) {
 	if !aws.IsInstanceID(id) && !aws.IsSnapshotID(id) {
+		return "", aws.ErrInvalidID
+	}
+	if conf.SubnetID != "" && !aws.IsSubnetID(conf.SubnetID) {
+		// User specified an invalid subnet ID
+		logging.Error("The specified Subnet ID is not a valid subnet ID")
 		return "", aws.ErrInvalidID
 	}
 	path, err := parseOutPath(conf.LogsPath)
@@ -157,11 +163,15 @@ func awsShareLogs(ctx context.Context, region, id string, conf Config) (string, 
 		return "", aws.ErrNoAMIInRegion
 	}
 	instanceName := "Temporary-share-logs-instance"
-	instance, err := awsSvc.LaunchInstance(ctx, ami, aws.SmallInstanceType, userdata, conf.AWSKeyName, device)
+	instance, err := awsSvc.LaunchInstance(ctx, ami, aws.SmallInstanceType, userdata, conf.AWSKeyName, conf.SubnetID, device)
 	if err != nil {
 		switch err {
 		case aws.ErrNotAllowed:
 			logging.Error("Not enough IAM permissions to launch an instance")
+			break
+		case aws.ErrRequiresSubnet:
+			logging.Error("A subnet ID must be specified in order to launch instance")
+			logging.Error("Please specify subnet ID with the --subnet-id flag")
 			break
 		case aws.ErrKeyNonExisting:
 			logging.Errorf("The key pair '%s' does not exist in AWS", conf.AWSKeyName)
