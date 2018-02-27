@@ -34,6 +34,12 @@ var (
 
 	// ErrLogTimeout is returned if logs are never successfully downlaoded after several retries
 	ErrLogTimeout = errors.New("timed out while waiting for logs to download")
+
+	// ErrNoAWSKey is returned if specifying an AWS key that doesn't exist
+	ErrNoAWSKey = errors.New("specified AWS key does not exist")
+
+	// ErrNoPrivateKey is returned if specifying a key path that doesn't exist
+	ErrNoPrivateKey = errors.New("specified key file does not exist")
 )
 
 // Config can be used to specify extra parameters when sharing logs
@@ -96,19 +102,35 @@ func awsShareLogs(ctx context.Context, region, id string, conf Config) (string, 
 	if err != nil {
 		return "", err
 	}
-
-	keyExist, err := awsSvc.KeyPairExist(ctx, conf.AWSKeyName)
-	if err != nil {
-		if err == aws.ErrNotAllowed {
-			// Not allowed to check if key exist, assume it's correct and continue
-			logging.Warning("Not allowed to check if key exists in AWS, assuming it does...")
-			keyExist = true
-		} else {
-			return "", err
+	var keyExist bool
+	if conf.AWSKeyName != "" {
+		keyExist, err = awsSvc.KeyPairExist(ctx, conf.AWSKeyName)
+		if err != nil {
+			if err == aws.ErrNotAllowed {
+				// Not allowed to check if key exist, assume it's correct and continue
+				logging.Warning("Not allowed to check if key exists in AWS, assuming it does...")
+				keyExist = true
+			} else {
+				return "", err
+			}
+		}
+		if !keyExist {
+			logging.Errorf("The specified key \"%s\" does not exist in AWS", conf.AWSKeyName)
+			return "", ErrNoAWSKey
 		}
 	}
+
+	if conf.PrivateKeyPath != "" {
+		path = filepath.FromSlash(path)
+		if _, err := os.Stat(filepath.FromSlash(conf.PrivateKeyPath)); os.IsNotExist(err) {
+			logging.Error("The specified private key file could not be found")
+			return "", ErrNoPrivateKey
+		}
+	}
+
 	if !keyExist {
 		// Create a temporary key to be used
+		logging.Info("Creating a new temporary key pair in AWS")
 		rand.Seed(time.Now().Unix())
 		randomName := fmt.Sprintf("MetavisorTemporaryKey-%d", rand.Int())
 		logging.Debugf("Creating temporray key pair with name: %s", randomName)
