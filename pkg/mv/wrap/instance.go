@@ -159,14 +159,14 @@ func awsShuffleInstanceVolumes(ctx context.Context, service aws.Service, instanc
 		// Instance has no root device, we already checked this, so it should be fine
 		return nil, ErrNoRootDevice
 	}
+
 	mv.QueueCleanup(func() {
-		// We should clean up the instance volume on failures, because when detaching the volume
-		// from the instance it will no longer get automatically deleted on instance termination
-		logging.Info("Deleting instance volume")
-		err := service.DeleteVolume(context.Background(), instanceRootVolID)
+		// If wrapping fails, let's attempty to detach the MV root volume,
+		// then re-attach the instance volume as the root volume
+		logging.Info("Attempting to restore instance root volume")
+		err := restoreGuestVolume(context.Background(), service, instance.ID(), instanceRootVolID)
 		if err != nil {
-			logging.Errorf("Failed to clean up instance volume: %s", instanceRootVolID)
-			logging.Debugf("Could not delete volume: %s", err)
+			logging.Debugf("Got error while trying to restore instance: %s", err)
 		}
 	}, true)
 
@@ -177,6 +177,7 @@ func awsShuffleInstanceVolumes(ctx context.Context, service aws.Service, instanc
 		return nil, err
 	}
 	logging.Debug("Detached instance root device")
+
 	err = service.AttachVolume(ctx, instanceRootVolID, instance.ID(), GuestDeviceName)
 	if err != nil {
 		// Could not attach volume
@@ -194,6 +195,60 @@ func awsShuffleInstanceVolumes(ctx context.Context, service aws.Service, instanc
 	logging.Info("Waiting for Metavisor and instance volumes to be attached")
 	// Wait for devices to get attached and shows up in instance block device mapping
 	return awaitInstanceDevices(ctx, service, instance, mvVolID, instanceRootVolID)
+}
+
+func restoreGuestVolume(ctx context.Context, service aws.Service, instanceID, guestVolID string) error {
+	// Attemptt to restore instance to non-wrapped
+
+	// First make sure instance is stopped so volumes can be moved
+	if err := service.StopInstance(ctx, instanceID); err != nil {
+		logging.Error("Could not stop instance to restore guest volume")
+		return err
+	}
+	if err := service.AwaitInstanceStopped(ctx, instanceID); err != nil {
+		logging.Error("Could not stop instance to restore guest volume")
+		return err
+	}
+	inst, err := service.GetInstance(ctx, instanceID)
+	if err != nil {
+		logging.Error("Could not get instance details while cleaning up")
+		return err
+	}
+	rootDeviceName := inst.RootDeviceName()
+	rootID, rootAttached := inst.DeviceMapping()[rootDeviceName]
+	secondaryID, secondaryAttached := inst.DeviceMapping()[GuestDeviceName]
+	if rootAttached && rootID == guestVolID {
+		// Guest volume already attached as root
+		logging.Info("Guest volume already attached as root device, nothing to clean up")
+		return nil
+	} else if rootAttached {
+		// Detach the root device, as it's not the guest volume
+		if err = service.DetachVolume(ctx, rootID, instanceID, rootDeviceName); err != nil {
+			logging.Error("Could not detach non-guest volume from root device")
+			return err
+		}
+		defer service.DeleteVolume(ctx, rootID)
+		logging.Info("Detached Metavisor volume from root device")
+	}
+
+	if secondaryAttached && secondaryID == guestVolID {
+		// Detach the guest volume from secondary device
+		if err = service.DetachVolume(ctx, guestVolID, instanceID, GuestDeviceName); err != nil {
+			logging.Error("Could not detach guest volume from secondary device")
+			return err
+		}
+	}
+	if err = service.AttachVolume(ctx, guestVolID, instanceID, rootDeviceName); err != nil {
+		logging.Error("Could not re-attach guest volume as root device")
+		return err
+	}
+	logging.Info("Guest volume re-attached to root device")
+	if err = service.StartInstance(ctx, instanceID); err != nil {
+		logging.Warningf("Could not start instance %s after attaching guest volume", instanceID)
+	}
+	logging.Infof("Instance %s successfully restored", instanceID)
+	// We don't care about waiting for the instance to start here
+	return nil
 }
 
 // Here we also want to return if the MV has ENA support or not, as this is needed later
@@ -308,6 +363,7 @@ func awaitInstanceDevices(ctx context.Context, service aws.Service, instance aws
 				return nil, err
 			}
 			logging.Warning("Failed to get instance details, retrying...")
+			time.Sleep(sleepTime)
 			continue
 		}
 		gVID, guestAttached := inst.DeviceMapping()[GuestDeviceName]
