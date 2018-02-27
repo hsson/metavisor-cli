@@ -7,12 +7,13 @@ func TestCleanup(t *testing.T) {
 	f := func() {
 		didRun = true
 	}
-	queuedCleanups = nil
+	stackedCleanups = nil
 	QueueCleanup(f, true)
 	Cleanup(true)
 	if didRun {
 		t.Error("Cleanup should only have run if failure happened")
 	}
+	QueueCleanup(f, true)
 	Cleanup(false)
 	if !didRun {
 		t.Error("Cleanup never happened")
