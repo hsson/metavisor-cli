@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	idPrefix   = "i-"
-	snapPrefix = "snap-"
-	amiPrefix  = "ami-"
+	idPrefix     = "i-"
+	snapPrefix   = "snap-"
+	amiPrefix    = "ami-"
+	subnetPrefix = "subnet-"
 )
 
 // Amazon Linux AMIs (HVM EBS) collected on Feb 14 2018, from:
@@ -60,6 +61,11 @@ func IsSnapshotID(id string) bool {
 func IsAMIID(id string) bool {
 	// TODO: Maybe use regex?
 	return strings.HasPrefix(id, amiPrefix)
+}
+
+func IsSubnetID(id string) bool {
+	// TODO: Maybe use regex?
+	return strings.HasPrefix(id, subnetPrefix)
 }
 
 // IsValidRegion will validate a specified region to make sure it exist in AWS

@@ -91,7 +91,7 @@ func (a *awsService) GetInstance(ctx context.Context, instanceID string) (Instan
 	return nil, ErrInstanceNonExisting
 }
 
-func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, userData, keyName string, extraDevices ...NewDevice) (Instance, error) {
+func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, userData, keyName, subnetID string, extraDevices ...NewDevice) (Instance, error) {
 	if !IsAMIID(imageID) {
 		return nil, ErrInvalidID
 	}
@@ -124,6 +124,9 @@ func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, 
 		MinCount:     aws.Int64(1),
 		MaxCount:     aws.Int64(1),
 	}
+	if strings.TrimSpace(subnetID) != "" {
+		input.SubnetId = aws.String(subnetID)
+	}
 	if strings.TrimSpace(userData) != "" {
 		input.UserData = aws.String(base64.StdEncoding.EncodeToString([]byte(userData)))
 	}
@@ -141,6 +144,10 @@ func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, 
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
 			return nil, ErrNotAllowed
+		} else if ok && strings.Contains(aerr.Code(), vpcNotFoundErrorCode) {
+			return nil, ErrRequiresSubnet
+		} else if ok && aerr.Code() == subnetNotFoundErrorCode {
+			return nil, ErrInvalidSubnetID
 		}
 		return nil, err
 	}

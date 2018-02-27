@@ -57,6 +57,7 @@ var (
 	awsWrapAMIVersion = awsWrapAMI.Flag("metavisor-version", "Which version of the MV to use").PlaceHolder("VERSION").String()
 	awsWrapAMIAMI     = awsWrapAMI.Flag("metavisor-image", "AMI ID of MV to use, must be in correct region").Hidden().PlaceHolder("AMI-ID").String()
 	awsWrapAMIDomain  = awsWrapAMI.Flag("service-domain", "Specify which Yeti to talk to").Hidden().PlaceHolder("DOMAIN").Envar(envServiceDomain).String()
+	awsWrapAMISubnet  = awsWrapAMI.Flag("subnet-id", "Use specified subnet rather than default when launching temporary instance").PlaceHolder("ID").String()
 	awsWrapAMIID      = awsWrapAMI.Arg("ID", "ID of the instance to wrap").Required().String()
 
 	// AWS Share logs
@@ -68,6 +69,7 @@ var (
 	awsShareLogsBastionHost = awsShareLogs.Flag("bastion-host", "Host of bastion to tunnel through").PlaceHolder("HOST").Hidden().String() // TODO: Support bastion
 	awsShareLogsBastionUser = awsShareLogs.Flag("bastion-user", "Bastion username to tunnel through").PlaceHolder("NAME").Hidden().String()
 	awsShareLogsBastionKey  = awsShareLogs.Flag("bastion-key-path", "Key in bastion to use when tunneling").PlaceHolder("PATH").Hidden().String()
+	awsShareLogsSubnet      = awsShareLogs.Flag("subnet-id", "Use specified subnet rather than default when launching temporary instance").PlaceHolder("ID").String()
 	awsShareLogsID          = awsShareLogs.Arg("ID", "ID of instance or snapshot to get logs from").Required().String()
 
 	// Generic commands
@@ -210,6 +212,7 @@ func wrapAMI(ctx context.Context) {
 		MetavisorVersion: *awsWrapAMIVersion,
 		MetavisorAMI:     *awsWrapAMIAMI,
 		ServiceDomain:    *awsWrapAMIDomain,
+		SubnetID:         *awsWrapAMISubnet,
 		IAMRoleARN:       *awsCommandIAM,
 		IAMDeviceARN:     *awsCommandIAMMFA,
 		IAMCode:          *awsCommandIAMCode,
@@ -232,6 +235,7 @@ func shareLogs(ctx context.Context) {
 		BastionHost:           *awsShareLogsBastionHost,
 		BastionUsername:       *awsShareLogsBastionUser,
 		BastionPrivateKeyPath: *awsShareLogsBastionKey,
+		SubnetID:              *awsShareLogsSubnet,
 		IAMRoleARN:            *awsCommandIAM,
 		IAMDeviceARN:          *awsCommandIAMMFA,
 		IAMCode:               *awsCommandIAMCode,

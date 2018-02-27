@@ -141,6 +141,11 @@ func awsVerifyConfig(conf Config) error {
 		logging.Error("The specified Metavisor AMI is not a valid AMI ID")
 		return ErrInvalidAMI
 	}
+	if conf.SubnetID != "" && !aws.IsSubnetID(conf.SubnetID) {
+		// User specified an invalid subnet ID
+		logging.Error("The specified Subnet ID is not a valid subnet ID")
+		return aws.ErrInvalidID
+	}
 	if conf.Token != "" {
 		isValid := isValidToken(conf.Token)
 		if !isValid {

@@ -18,12 +18,14 @@ import (
 )
 
 const (
-	accessDeniedErrorCode = "AccessDenied"
-	keyNotFoundErrorCode  = "InvalidKeyPair.NotFound"
-	instanceIDErrorCode   = "InvalidInstanceID"
-	amiIDErrorCode        = "InvalidAMIID"
-	volumeNotFound        = "InvalidVolumeID"
-	snapshotNotFound      = "InvalidSnapshot.NotFound"
+	accessDeniedErrorCode   = "AccessDenied"
+	keyNotFoundErrorCode    = "InvalidKeyPair.NotFound"
+	instanceIDErrorCode     = "InvalidInstanceID"
+	amiIDErrorCode          = "InvalidAMIID"
+	volumeNotFound          = "InvalidVolumeID"
+	snapshotNotFound        = "InvalidSnapshot.NotFound"
+	vpcNotFoundErrorCode    = "VPCResourceNotSpecified"
+	subnetNotFoundErrorCode = "InvalidSubnetID.NotFound"
 
 	genericVolumeType = "gp2"
 
@@ -68,6 +70,10 @@ var (
 	ErrInstanceImpaired = errors.New("instance is in impaired state")
 	// ErrInvalidARN is returned if a specified ARN can't be assumed
 	ErrInvalidARN = errors.New("failed to assume role with given ARN")
+	// ErrRequiresSubnet is returned when a subnet must be explicitly specified in order to launch an instance
+	ErrRequiresSubnet = errors.New("a subnet ID must be specified to launch instance")
+	// ErrInvalidSubnetID is returned if a specified subnet ID does not work
+	ErrInvalidSubnetID = errors.New("the specified subnet is not valid")
 )
 
 var validVolumeTypes = []string{"gp2", "io1", "st1", "sc1", "standard"}
@@ -93,7 +99,7 @@ type Service interface {
 	// GetInstance returns an instance representation of the instance with the given ID
 	GetInstance(ctx context.Context, instanceID string) (Instance, error)
 	// LaunchInstance will use a new instance with the specified attributes
-	LaunchInstance(ctx context.Context, image, instanceType, userData, keyName string, extraDevices ...NewDevice) (Instance, error)
+	LaunchInstance(ctx context.Context, image, instanceType, userData, keyName, subnetID string, extraDevices ...NewDevice) (Instance, error)
 	// TerminateInstance will terminate the instance with the given ID
 	TerminateInstance(ctx context.Context, instanceID string) error
 	// StopInstance will stop the instance with the given ID

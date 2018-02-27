@@ -17,6 +17,11 @@ func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, co
 	if !aws.IsAMIID(id) {
 		return "", aws.ErrInvalidID
 	}
+	if conf.SubnetID != "" && !aws.IsSubnetID(conf.SubnetID) {
+		// User specified an invalid subnet ID
+		logging.Error("The specified Subnet ID is not a valid subnet ID")
+		return "", aws.ErrInvalidID
+	}
 	if conf.Token != "" {
 		isValid := isValidToken(conf.Token)
 		if !isValid {
@@ -29,13 +34,19 @@ func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, co
 	// Launch a new instance
 	logging.Info("Launching temporary wrapper instance")
 	instanceName := "Temporary-Metavisor-wrapper-instance"
-	inst, err := awsSvc.LaunchInstance(ctx, id, aws.LargerInstanceType, "", "")
+	inst, err := awsSvc.LaunchInstance(ctx, id, aws.LargerInstanceType, "", "", conf.SubnetID)
 	if err != nil {
 		switch err {
 		case aws.ErrNotAllowed:
 			logging.Error("Not enough IAM permissions to launch instance")
+			break
+		case aws.ErrRequiresSubnet:
+			logging.Error("A subnet ID must be specified in order to launch instance")
+			logging.Error("Please specify subnet ID with the --subnet-id flag")
+			break
 		default:
 			logging.Error("Could not launch instance based on specified AMI")
+			break
 		}
 		return "", err
 	}
