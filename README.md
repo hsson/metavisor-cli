@@ -1,6 +1,8 @@
 # metavisor-cli
 The `metavisor-cli` is a command-line interface to easily deploy cloud instances with the Metavisor.
 
+The latest release of **metavisor-cli** is [1.0.0](https://github.com/brkt/metavisor-cli/releases/latest).
+
 ## Requirements
 This CLI is implemented using [Go](https://golang.org) (version 1.10 to be specific). Go must be installed in order to compile the CLI. If you don't have Go installed, every release of the CLI is also accompanied by pre-compiled binaries for Darwin, Linux, and Windows which don't have any additional dependenices. To get the correct dependency versions when compiling, make sure to use the depedency management tool `dep`.
 
