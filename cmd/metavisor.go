@@ -23,6 +23,8 @@ const (
 	envOutputJSON = "MV_OUTPUT_JSON"
 	// Env variable to set default region to use for AWS commands
 	envAWSRegion = "MV_AWS_REGION"
+	// Env variable to set default subnet to use for launching instances
+	envAWSSubnet = "MV_AWS_SUBNET"
 	// Env variable to set launch token to use for wrapping
 	envLaunchToken = "MV_LAUNCH_TOKEN"
 	// Env variable to set a custom service domain
@@ -57,7 +59,7 @@ var (
 	awsWrapAMIVersion = awsWrapAMI.Flag("metavisor-version", "Which version of the MV to use").PlaceHolder("VERSION").String()
 	awsWrapAMIAMI     = awsWrapAMI.Flag("metavisor-image", "AMI ID of MV to use, must be in correct region").Hidden().PlaceHolder("AMI-ID").String()
 	awsWrapAMIDomain  = awsWrapAMI.Flag("service-domain", "Specify which Yeti to talk to").Hidden().PlaceHolder("DOMAIN").Envar(envServiceDomain).String()
-	awsWrapAMISubnet  = awsWrapAMI.Flag("subnet-id", "Use specified subnet rather than default when launching temporary instance").PlaceHolder("ID").String()
+	awsWrapAMISubnet  = awsWrapAMI.Flag("subnet-id", fmt.Sprintf("Use specified subnet when launching instances (overrides $%s)", envAWSSubnet)).PlaceHolder("ID").Envar(envAWSSubnet).String()
 	awsWrapAMIID      = awsWrapAMI.Arg("ID", "ID of the instance to wrap").Required().String()
 
 	// AWS Share logs
@@ -69,7 +71,7 @@ var (
 	awsShareLogsBastionHost = awsShareLogs.Flag("bastion-host", "Host of bastion to tunnel through").PlaceHolder("HOST").Hidden().String() // TODO: Support bastion
 	awsShareLogsBastionUser = awsShareLogs.Flag("bastion-user", "Bastion username to tunnel through").PlaceHolder("NAME").Hidden().String()
 	awsShareLogsBastionKey  = awsShareLogs.Flag("bastion-key-path", "Key in bastion to use when tunneling").PlaceHolder("PATH").Hidden().String()
-	awsShareLogsSubnet      = awsShareLogs.Flag("subnet-id", "Use specified subnet rather than default when launching temporary instance").PlaceHolder("ID").String()
+	awsShareLogsSubnet      = awsShareLogs.Flag("subnet-id", fmt.Sprintf("Use specified subnet when launching instances (overrides $%s)", envAWSSubnet)).PlaceHolder("ID").Envar(envAWSSubnet).String()
 	awsShareLogsID          = awsShareLogs.Arg("ID", "ID of instance or snapshot to get logs from").Required().String()
 
 	// Generic commands
