@@ -82,6 +82,7 @@ var (
 	listWithJSON = listCommand.Flag("json", fmt.Sprintf("Output information as JSON (overrides $%s)", envOutputJSON)).Envar(envOutputJSON).Short('J').Bool()
 
 	logVerbose = app.Flag("verbose", "Set logging level to Debug").Short('v').Bool()
+	logOutput  = app.Flag("log-output", "Set where to save log file").PlaceHolder("PATH").String()
 
 	// ErrGeneric is returned when we can't figure out what error happened, but we don't want to show the actual error
 	// to the user
@@ -102,6 +103,9 @@ func main() {
 	}
 	if *logVerbose {
 		logging.LogLevel = logging.LevelDebug
+	}
+	if *logOutput != "" {
+		logging.LogFilePath = *logOutput
 	}
 
 	ctx := context.Background()
