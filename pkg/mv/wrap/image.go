@@ -11,7 +11,12 @@ import (
 	"github.com/brkt/metavisor-cli/pkg/mv"
 )
 
-const newNameTemplate = "Metavisor wrapped image based on %s (%s)"
+const (
+	newNameTemplate    = "Metavisor wrapped image based on %s (%s)"
+	appendNameTemplate = "%s (Metavisor wrapped at %s)"
+	newDesc            = "Metavisor wrapped by Immutable Systems"
+	appendDescTemplate = "%s - wrapped by Immutable Systems"
+)
 
 func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, conf Config) (string, error) {
 	if !aws.IsAMIID(id) {
@@ -107,9 +112,26 @@ func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, co
 	logging.Info("Instance is ready")
 
 	// Now create an AMI from the instance
+	logging.Info("Getting name and description of source image")
+	var name, desc string
+	sourceImage, err := awsSvc.GetImage(ctx, id)
+	if err != nil {
+		if err == aws.ErrNotAllowed {
+			logging.Warning("Not enough IAM permissions to get image details, using defaults")
+			name = fmt.Sprintf(newNameTemplate, id, time.Now().Format("2006-01-02 15.04.05"))
+			desc = newDesc
+		} else {
+			return "", err
+		}
+	} else {
+		name = fmt.Sprintf(appendNameTemplate, sourceImage.Name(), time.Now().Format("2006-01-02 15.04.05"))
+		desc = fmt.Sprintf(appendDescTemplate, sourceImage.Description())
+	}
+	logging.Infof("New AMI name will be \"%s\"", name)
+	logging.Infof("New AMI description will be \"%s\"", desc)
 	logging.Info("Creating new AMI based on wrapped instance")
-	name := fmt.Sprintf(newNameTemplate, id, time.Now().Format("2006-01-02 15.04.05"))
-	ami, err := awsSvc.CreateImage(ctx, instID, name)
+
+	ami, err := awsSvc.CreateImage(ctx, instID, name, desc)
 	if err != nil {
 		logging.Error("Failed to create new AMI")
 		return "", err
