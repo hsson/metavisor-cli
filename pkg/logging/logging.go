@@ -36,15 +36,16 @@ var (
 	LogFileNamePrefix = "log"
 	// LogToFile determines whether to also log output to a file or not
 	LogToFile = true
+	// LogFilePath is where the log will be saved, temp file will be used if set to ""
+	LogFilePath = ""
 
-	outLogger   = log.New(os.Stdout, "", 0)
-	termLogger  = log.New(os.Stderr, "", 0)
-	fileLog     *log.Logger
-	logFilePath = ""
+	outLogger  = log.New(os.Stdout, "", 0)
+	termLogger = log.New(os.Stderr, "", 0)
+	fileLog    *log.Logger
 )
 
 func LogFile() string {
-	return logFilePath
+	return LogFilePath
 }
 
 func Debug(v ...interface{}) {
@@ -97,7 +98,7 @@ func Fatal(v ...interface{}) {
 	termLogger.Printf(templateFatal, fmt.Sprintln(v...))
 	if fileLogger() != nil {
 		fileLogger().Printf(templateFatal, fmt.Sprintln(v...))
-		outLogger.Printf("Logs are available at:\n%s", logFilePath)
+		outLogger.Printf("Logs are available at:\n%s", LogFilePath)
 	}
 	os.Exit(1)
 }
@@ -106,7 +107,7 @@ func Fatalf(t string, v ...interface{}) {
 	termLogger.Printf(templateFatal, fmt.Sprintf(t, v...))
 	if fileLogger() != nil {
 		fileLogger().Printf(templateFatal, fmt.Sprintf(t, v...))
-		outLogger.Printf("Logs are available at:\n%s", logFilePath)
+		outLogger.Printf("Logs are available at:\n%s", LogFilePath)
 	}
 	os.Exit(1)
 }
@@ -131,13 +132,18 @@ func fileLogger() *log.Logger {
 	if fileLog != nil {
 		return fileLog
 	}
-
-	f, err := ioutil.TempFile("", LogFileNamePrefix)
+	var f *os.File
+	var err error
+	if LogFilePath != "" {
+		f, err = os.OpenFile(LogFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	} else {
+		f, err = ioutil.TempFile("", LogFileNamePrefix)
+	}
 	if err != nil {
 		Errorf("Could not write log to file: %s", err)
 		return nil
 	}
 	fileLog = log.New(f, "", log.Ldate|log.Ltime)
-	logFilePath = f.Name()
+	LogFilePath = f.Name()
 	return fileLog
 }
