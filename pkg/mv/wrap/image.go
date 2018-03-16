@@ -13,9 +13,8 @@ import (
 
 const (
 	newNameTemplate    = "Metavisor wrapped image based on %s (%s)"
-	appendNameTemplate = "%s (Metavisor wrapped at %s)"
 	newDesc            = "Metavisor wrapped by Immutable Systems"
-	appendDescTemplate = "%s - wrapped by Immutable Systems"
+	appendDescTemplate = "%s - %s - wrapped by Immutable Systems"
 )
 
 func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, conf Config) (string, error) {
@@ -124,8 +123,8 @@ func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, co
 			return "", err
 		}
 	} else {
-		name = fmt.Sprintf(appendNameTemplate, sourceImage.Name(), time.Now().Format("2006-01-02 15.04.05"))
-		desc = fmt.Sprintf(appendDescTemplate, sourceImage.Description())
+		name = fmt.Sprintf(newNameTemplate, id, time.Now().Format("2006-01-02 15.04.05"))
+		desc = fmt.Sprintf(appendDescTemplate, sourceImage.Name(), sourceImage.Description())
 	}
 	logging.Infof("New AMI name will be \"%s\"", name)
 	logging.Infof("New AMI description will be \"%s\"", desc)
