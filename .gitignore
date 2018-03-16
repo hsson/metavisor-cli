@@ -415,6 +415,8 @@ __pycache__/
 metavisor
 metavisor-linux
 metavisor-darwin
+metavisor-freebsd
+metavisor-openbsd
 metavisor-windows.exe
 metavisor.exe
 
