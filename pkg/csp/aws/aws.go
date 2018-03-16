@@ -115,7 +115,7 @@ type Service interface {
 	// AwaitInstanceStopped will block until instance is stopped
 	AwaitInstanceStopped(ctx context.Context, instanceID string) error
 	// CreateImage will create a new AMI based on an instance
-	CreateImage(ctx context.Context, instanceID, name string) (string, error)
+	CreateImage(ctx context.Context, instanceID, name, desc string) (string, error)
 	// GetImage returns the AMI with the given ID
 	GetImage(ctx context.Context, imageID string) (Image, error)
 	// AwaitImageAvailable will block until image is available
@@ -166,6 +166,10 @@ type Image interface {
 	ENASupport() bool
 	// State is the current state of the AMI
 	State() string
+	// Name is the name of the AMI
+	Name() string
+	// Description is the description of the AMI
+	Description() string
 }
 
 // Volume is a volume in AWS

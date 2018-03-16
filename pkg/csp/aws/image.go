@@ -15,20 +15,25 @@ type image struct {
 	deviceMapping  map[string]string
 	enaSupport     bool
 	state          string
+	name           string
+	description    string
 }
 
 func (i *image) RootDeviceName() string           { return i.rootDeviceName }
 func (i *image) DeviceMapping() map[string]string { return i.deviceMapping }
 func (i *image) ENASupport() bool                 { return i.enaSupport }
 func (i *image) State() string                    { return i.state }
+func (i *image) Name() string                     { return i.name }
+func (i *image) Description() string              { return i.description }
 
-func (a *awsService) CreateImage(ctx context.Context, instanceID, name string) (string, error) {
+func (a *awsService) CreateImage(ctx context.Context, instanceID, name, desc string) (string, error) {
 	if strings.TrimSpace(instanceID) == "" {
 		return "", ErrInstanceNonExisting
 	}
 	input := &ec2.CreateImageInput{
-		InstanceId: aws.String(instanceID),
-		Name:       aws.String(name),
+		InstanceId:  aws.String(instanceID),
+		Name:        aws.String(name),
+		Description: aws.String(desc),
 	}
 	out, err := a.client.CreateImageWithContext(ctx, input)
 	if err != nil {
@@ -71,6 +76,14 @@ func (a *awsService) GetImage(ctx context.Context, imageID string) (Image, error
 		if img.State != nil {
 			state = *img.State
 		}
+		var name string
+		if img.Name != nil {
+			name = *img.Name
+		}
+		var desc string
+		if img.Description != nil {
+			desc = *img.Description
+		}
 		res := &image{
 			resource: resource{
 				id: *img.ImageId,
@@ -79,6 +92,8 @@ func (a *awsService) GetImage(ctx context.Context, imageID string) (Image, error
 			deviceMapping:  imageBlockToMap(img.BlockDeviceMappings),
 			enaSupport:     enaSupport,
 			state:          state,
+			name:           name,
+			description:    desc,
 		}
 		return res, nil
 	}
