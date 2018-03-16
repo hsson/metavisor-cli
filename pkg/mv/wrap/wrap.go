@@ -123,11 +123,12 @@ func Image(ctx context.Context, region, id string, conf Config) (string, error) 
 				Result: "",
 				Error:  err,
 			}
-		}
-		img, err := awsWrapImage(ctx, service, region, id, conf)
-		res <- mv.MaybeString{
-			Result: img,
-			Error:  err,
+		} else {
+			img, err := awsWrapImage(ctx, service, region, id, conf)
+			res <- mv.MaybeString{
+				Result: img,
+				Error:  err,
+			}
 		}
 	}()
 
