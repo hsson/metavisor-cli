@@ -90,7 +90,7 @@ func (a *awsService) CreateSnapshot(ctx context.Context, name, sourceVolumeID st
 
 func (a *awsService) DeleteSnapshot(ctx context.Context, snapshotID string) error {
 	if strings.TrimSpace(snapshotID) == "" {
-		return ErrInvalidID
+		return ErrInvalidSnapshotID
 	}
 	input := &ec2.DeleteSnapshotInput{
 		SnapshotId: aws.String(snapshotID),

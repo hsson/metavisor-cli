@@ -41,8 +41,20 @@ var genericAMIMap = map[string]string{
 }
 
 var (
-	// ErrInvalidID is returned if a specified ID is not of correct format
-	ErrInvalidID = errors.New("the specified ID is not of valid format")
+	// ErrInvalidID is returned if a specified ID is not in the correct format
+	ErrInvalidID = errors.New("the specified ID is not formatted properly")
+
+	// ErrInvalidInstanceID is returned if a specified instance ID is not in the correct format
+	ErrInvalidInstanceID = errors.New("the specified instance ID is not formatted properly - expected i-XXXXXXXXXXX")
+
+	// ErrInvalidAMIID is returned if a specified AMI ID is not in the correct format
+	ErrInvalidAMIID = errors.New("the specified AMI ID is not formatted properly - expected ami-XXXXXXX")
+
+	// ErrInvalidSnapshotID is returned if a specified snapshot ID is not in the correct format
+	ErrInvalidSnapshotID = errors.New("the specified snapshot ID is not formatted properly - expected snap-XXXXXXX")
+
+	// ErrInvalidVolumeID is returned if a specified volume ID is not in the correct format
+	ErrInvalidVolumeID = errors.New("the specified volume ID is not formatted properly - expected vol-XXXXXXX")
 )
 
 // IsInstanceID determines if the specified ID belong to an instance or not

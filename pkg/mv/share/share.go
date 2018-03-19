@@ -88,7 +88,7 @@ func awsShareLogs(ctx context.Context, region, id string, conf Config) (string, 
 	if conf.SubnetID != "" && !aws.IsSubnetID(conf.SubnetID) {
 		// User specified an invalid subnet ID
 		logging.Error("The specified Subnet ID is not a valid subnet ID")
-		return "", aws.ErrInvalidID
+		return "", aws.ErrInvalidSubnetID
 	}
 	path, err := parseOutPath(conf.LogsPath)
 	if err != nil {
