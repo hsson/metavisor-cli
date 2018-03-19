@@ -63,7 +63,7 @@ func awsSnapFromID(ctx context.Context, id string, awsSvc aws.Service) (aws.Snap
 		logging.Debugf("The ID '%s' is a snapshot", id)
 		s, err := awsSvc.GetSnapshot(ctx, id)
 		if err != nil {
-			// THe specified instance doesn't exist or insufficient
+			// The specified instance doesn't exist or insufficient
 			// permissions
 			return nil, err
 		}

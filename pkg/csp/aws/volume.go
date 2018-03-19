@@ -16,7 +16,7 @@ type volume struct {
 
 func (a *awsService) CreateVolume(ctx context.Context, sourceSnapshotID, volumeType, zone string, size int64) (Volume, error) {
 	if strings.TrimSpace(sourceSnapshotID) == "" {
-		return nil, ErrInvalidID
+		return nil, ErrInvalidSnapshotID
 	}
 	var validVolume bool
 	for i := range validVolumeTypes {
@@ -54,7 +54,7 @@ func (a *awsService) CreateVolume(ctx context.Context, sourceSnapshotID, volumeT
 
 func (a *awsService) DeleteVolume(ctx context.Context, volumeID string) error {
 	if strings.TrimSpace(volumeID) == "" {
-		return ErrInvalidID
+		return ErrInvalidVolumeID
 	}
 	input := &ec2.DeleteVolumeInput{
 		VolumeId: aws.String(volumeID),
@@ -74,9 +74,14 @@ func (a *awsService) DeleteVolume(ctx context.Context, volumeID string) error {
 }
 
 func (a *awsService) DetachVolume(ctx context.Context, volumeID, instanceID, deviceName string) error {
-	if strings.TrimSpace(volumeID) == "" || strings.TrimSpace(instanceID) == "" {
-		return ErrInvalidID
+	if strings.TrimSpace(volumeID) == "" {
+		return ErrInvalidVolumeID
 	}
+
+	if strings.TrimSpace(instanceID) == "" {
+		return ErrInvalidInstanceID
+	}
+
 	input := &ec2.DetachVolumeInput{
 		Device:     aws.String(deviceName),
 		InstanceId: aws.String(instanceID),
@@ -95,9 +100,14 @@ func (a *awsService) DetachVolume(ctx context.Context, volumeID, instanceID, dev
 }
 
 func (a *awsService) AttachVolume(ctx context.Context, volumeID, instanceID, deviceName string) error {
-	if strings.TrimSpace(volumeID) == "" || strings.TrimSpace(instanceID) == "" {
-		return ErrInvalidID
+	if strings.TrimSpace(volumeID) == "" {
+		return ErrInvalidVolumeID
 	}
+
+	if strings.TrimSpace(instanceID) == "" {
+		return ErrInvalidInstanceID
+	}
+
 	input := &ec2.AttachVolumeInput{
 		Device:     aws.String(deviceName),
 		InstanceId: aws.String(instanceID),
@@ -117,7 +127,7 @@ func (a *awsService) AttachVolume(ctx context.Context, volumeID, instanceID, dev
 
 func (a *awsService) AwaitVolumeAvailable(ctx context.Context, volumeID string) error {
 	if strings.TrimSpace(volumeID) == "" {
-		return ErrInvalidID
+		return ErrInvalidVolumeID
 	}
 	input := &ec2.DescribeVolumesInput{
 		VolumeIds: aws.StringSlice([]string{volumeID}),
@@ -135,7 +145,7 @@ func (a *awsService) AwaitVolumeAvailable(ctx context.Context, volumeID string) 
 
 func (a *awsService) AwaitVolumeInUse(ctx context.Context, volumeID string) error {
 	if strings.TrimSpace(volumeID) == "" {
-		return ErrInvalidID
+		return ErrInvalidVolumeID
 	}
 	input := &ec2.DescribeVolumesInput{
 		VolumeIds: aws.StringSlice([]string{volumeID}),

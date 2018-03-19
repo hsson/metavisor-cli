@@ -19,12 +19,12 @@ const (
 
 func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, conf Config) (string, error) {
 	if !aws.IsAMIID(id) {
-		return "", aws.ErrInvalidID
+		return "", aws.ErrInvalidAMIID
 	}
 	if conf.SubnetID != "" && !aws.IsSubnetID(conf.SubnetID) {
 		// User specified an invalid subnet ID
 		logging.Error("The specified Subnet ID is not a valid subnet ID")
-		return "", aws.ErrInvalidID
+		return "", aws.ErrInvalidSubnetID
 	}
 	if conf.Token != "" {
 		isValid := isValidToken(conf.Token)

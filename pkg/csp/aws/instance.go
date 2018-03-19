@@ -93,7 +93,7 @@ func (a *awsService) GetInstance(ctx context.Context, instanceID string) (Instan
 
 func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, userData, keyName, subnetID string, extraDevices ...NewDevice) (Instance, error) {
 	if !IsAMIID(imageID) {
-		return nil, ErrInvalidID
+		return nil, ErrInvalidAMIID
 	}
 	if strings.TrimSpace(keyName) != "" {
 		if keyExist, err := a.KeyPairExist(ctx, keyName); (err != nil && err != ErrNotAllowed) || (!keyExist && err == nil) {
@@ -255,7 +255,7 @@ func (a *awsService) TerminateInstance(ctx context.Context, instanceID string) e
 
 func (a *awsService) ModifyInstanceAttribute(ctx context.Context, instanceID string, attr instanceAttribute, value interface{}) error {
 	if strings.TrimSpace(instanceID) == "" {
-		return ErrInvalidID
+		return ErrInvalidInstanceID
 	}
 	input := &ec2.ModifyInstanceAttributeInput{
 		InstanceId: aws.String(instanceID),
