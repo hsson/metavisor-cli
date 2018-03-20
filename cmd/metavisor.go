@@ -133,12 +133,14 @@ func showVersion(ctx context.Context) {
 	versionInfo, err := mv.GetInfo(ctx)
 	if err != nil {
 		// Could not fetch MV version. Log to debug and still show CLI version
+		logging.Debug("Error while getting version information: %s", err)
 		logging.Debug("Could not determine latest MV version, only showing CLI version")
 		exit = 1
 	}
 	output, err := mv.FormatInfo(versionInfo, *versionWithJSON)
 	if err != nil {
 		// Could not marshal information to JSON
+		logging.Debugf("Got error while formatting version information: %s", err)
 		logging.Fatal(ErrGeneric)
 		return
 	}
@@ -150,12 +152,14 @@ func listMetavisors(ctx context.Context) {
 	mvs, err := mv.GetMetavisorVersions(ctx)
 	if err != nil {
 		// Could not fetch available MV versions
+		logging.Debugf("Got error while fetching MV versions: %s", err)
 		logging.Fatal("Could not fetch available MV versions")
 		return
 	}
 	output, err := mv.FormatMetavisors(mvs, *listWithJSON)
 	if err != nil {
 		// Could not marshal versions to JSON
+		logging.Debugf("Got error while formatting MV versions: %s", err)
 		logging.Fatal(ErrGeneric)
 		return
 	}

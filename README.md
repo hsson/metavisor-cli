@@ -4,7 +4,7 @@ The `metavisor-cli` is a command-line interface to easily deploy cloud instances
 The latest release of **metavisor-cli** is [1.0.0](https://github.com/brkt/metavisor-cli/releases/latest).
 
 ## Requirements
-This CLI is implemented using [Go](https://golang.org) (version 1.10 to be specific). Go must be installed in order to compile the CLI. If you don't have Go installed, every release of the CLI is also accompanied by pre-compiled binaries for Darwin, Linux, FreeBSD, OpenBSD, and Windows which don't have any additional dependenices. To get the correct dependency versions when compiling, make sure to use the depedency management tool `dep`.
+This CLI is implemented using [Go](https://golang.org) (version 1.10 to be specific). Go must be installed in order to compile the CLI. If you don't have Go installed, every release of the CLI is also accompanied by pre-compiled binaries for Darwin (macOS), Linux, FreeBSD, OpenBSD, and Windows which don't have any additional dependenices. To get the correct dependency versions when compiling, make sure to use the depedency management tool `dep`.
 
 ## Installation
 Start by either compiling the CLI from the source code, or grab a pre-compiled binary from the latest release of the CLI. To compile the CLI yourself, first make sure your Go environment is properly setup and that you cloned this project to `$GOPATH/src/github.com/brkt/metavisor-cli`, then run:
@@ -43,7 +43,7 @@ Will compile a binary for your current system, e.g. if you're running Windows a 
 This make target can be used to create a binary for the specified platform, regarless of which system you're currently using. E.g. running `make docker-build-darwin` on a Windows machine will create a binary called `metavisor`.
 
 ### `make docker-build-all`
-Create binaries for Windows, Linux, OpenBSD, FreeBSD, and Darwin. The binaries will have a suffix indicating which platform they're built for. I.e. `make docker-build-all` outputs:
+Create binaries for Windows, Linux, OpenBSD, FreeBSD, and Darwin (macOS). The binaries will have a suffix indicating which platform they're built for. I.e. `make docker-build-all` outputs:
 
 - metavisor-linux
 - metavisor-darwin
