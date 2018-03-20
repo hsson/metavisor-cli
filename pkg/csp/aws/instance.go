@@ -12,6 +12,11 @@ import (
 	"github.com/brkt/metavisor-cli/pkg/logging"
 )
 
+const (
+	tagSpecInstance = "instance"
+	tagSpecVolume   = "volume"
+)
+
 type instance struct {
 	resource
 	instanceType    string
@@ -91,7 +96,7 @@ func (a *awsService) GetInstance(ctx context.Context, instanceID string) (Instan
 	return nil, ErrInstanceNonExisting
 }
 
-func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, userData, keyName, subnetID string, extraDevices ...NewDevice) (Instance, error) {
+func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, userData, keyName, subnetID string, tags map[string]string, extraDevices ...NewDevice) (Instance, error) {
 	if !IsAMIID(imageID) {
 		return nil, ErrInvalidAMIID
 	}
@@ -137,6 +142,32 @@ func (a *awsService) LaunchInstance(ctx context.Context, imageID, instanceType, 
 		input.KeyName = aws.String(keyName)
 	} else {
 		logging.Debug("Launching instance without key pair")
+	}
+	if tags != nil {
+		// Created tag specification so that tags apply to both the
+		// launched instance and its associated volume
+		awsTags := []*ec2.Tag{}
+		if _, exist := tags[cliResourceTagKey]; !exist {
+			tags[cliResourceTagKey] = cliResourceTagValue
+		}
+		for key, val := range tags {
+			awsTags = append(awsTags, &ec2.Tag{
+				Key:   aws.String(key),
+				Value: aws.String(val),
+			})
+			logging.Debugf("Launching instance with tag \"%s: %s\"", key, val)
+		}
+		tagSpec := []*ec2.TagSpecification{
+			&ec2.TagSpecification{
+				ResourceType: aws.String(tagSpecInstance),
+				Tags:         awsTags,
+			},
+			&ec2.TagSpecification{
+				ResourceType: aws.String(tagSpecVolume),
+				Tags:         awsTags,
+			},
+		}
+		input.TagSpecifications = tagSpec
 	}
 
 	out, err := a.client.RunInstancesWithContext(ctx, input)

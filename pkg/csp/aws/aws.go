@@ -37,6 +37,10 @@ const (
 	// SriovNetIsSupported is the value of SriovNetSupport when it's actually
 	// supported on the instance.
 	SriovNetIsSupported = "simple"
+
+	// A tag is added to all resources created by the CLI
+	cliResourceTagKey   = "metavisor-cli"
+	cliResourceTagValue = "true"
 )
 
 var (
@@ -99,7 +103,7 @@ type Service interface {
 	// GetInstance returns an instance representation of the instance with the given ID
 	GetInstance(ctx context.Context, instanceID string) (Instance, error)
 	// LaunchInstance will use a new instance with the specified attributes
-	LaunchInstance(ctx context.Context, image, instanceType, userData, keyName, subnetID string, extraDevices ...NewDevice) (Instance, error)
+	LaunchInstance(ctx context.Context, image, instanceType, userData, keyName, subnetID string, tags map[string]string, extraDevices ...NewDevice) (Instance, error)
 	// TerminateInstance will terminate the instance with the given ID
 	TerminateInstance(ctx context.Context, instanceID string) error
 	// StopInstance will stop the instance with the given ID
