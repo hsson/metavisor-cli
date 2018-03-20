@@ -25,6 +25,29 @@ If you instead decide to grab a binary from the releases page, make sure to get 
 
 After you have a compiled binary of the CLI, simply put it somewhere in your `$PATH` and you're ready to start using it. Try it out by running `metavisor version`.
 
+## Usage
+Assuming you have the CLI installed and available in your `$PATH` as `metavisor`, you can find all available commands as well as their corresponding parameters by running:
+```
+$ metavisor help
+```
+In order to find more specific help for a command, e.g. for wrapping instances, run:
+```
+$ metavisor aws wrap-instance --help
+```
+The easiest way to try the Metavisor out is to wrap one of your existing instances with it. Here follows an example for wrapping an instance with the ID `i-foobar123456` which is running in the region `us-west-2`:
+```
+$ metavisor aws wrap-instance --region=us-west-2 --token=$YOUR_LAUNCH_TOKEN i-foobar123456
+```
+Notice the `--token` argument, where a so-called launch token must be specified (in this case saved in the `$YOUR_LAUNCH_TOKEN` environment variable). The launch token is required in order to allow the Metavisor to communicate with the [Metavisor Director Console](https://mgmt.brkt.com). You can get a launch token by logging into your account in the [Metavisor Director Console](https://mgmt.brkt.com) and navigating to the `Generate Userdata` section of the `Settings` tab, and then clicking: `Generate --> OK --> COPY TOKEN ONLY`.
+
+### AWS Permissions
+The CLI requires a set of IAM permissions in EC2 in order to work properly. This is required to get the Metavisor up and running in your AWS account. An example policy template with the minimum permission requirements can be found in the `policy_template.json` file. If you attach this policy to an IAM role, that role can then be used by specifing the `--iam` flag in the CLI. Here is an example of wrapping an instance with the role `mv-cli-role` (assuming your AWS account ID is `123456789012`):
+```
+$ export YOUR_LAUNCH_TOKEN=<your launch token from Metavisor Director Console>
+$ export ROLE=arn:aws:iam::123456789012:role/mv-cli-role
+$ metavisor aws wrap-instance --region=us-west-2 --token=$YOUR_LAUNCH_TOKEN --iam=$ROLE i-foobar123456
+```
+
 ## Contributing
 The metavisor-cli project uses `dep` to manage dependencies. For more information about `dep`, please take a look at [golang.github.io/dep/](https://golang.github.io/dep/).
 

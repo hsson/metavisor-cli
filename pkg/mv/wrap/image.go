@@ -3,7 +3,6 @@ package wrap
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/brkt/metavisor-cli/pkg/csp/aws"
@@ -38,7 +37,10 @@ func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, co
 	// Launch a new instance
 	logging.Info("Launching temporary wrapper instance")
 	instanceName := "Temporary-Metavisor-wrapper-instance"
-	inst, err := awsSvc.LaunchInstance(ctx, id, aws.LargerInstanceType, "", "", conf.SubnetID)
+	instanceTags := map[string]string{
+		"Name": instanceName,
+	}
+	inst, err := awsSvc.LaunchInstance(ctx, id, aws.LargerInstanceType, "", "", conf.SubnetID, instanceTags)
 	if err != nil {
 		switch err {
 		case aws.ErrNotAllowed:
@@ -77,14 +79,6 @@ func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, co
 		return "", err
 	}
 	logging.Info("Instance is ready")
-	if strings.TrimSpace(instanceName) != "" {
-		err = awsSvc.TagResources(ctx, map[string]string{"Name": instanceName}, inst.ID())
-		if err == aws.ErrNotAllowed {
-			logging.Warning("Insufficient IAM permissions to tag resource, skipping Name")
-		} else if err != nil {
-			logging.Errorf("Unexpected error occured while trying to set name on instance: %s", err)
-		}
-	}
 
 	// Then wrap the instance
 	logging.Info("Wrapping the temporary instance with Metavisor")

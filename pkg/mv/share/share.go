@@ -185,7 +185,10 @@ func awsShareLogs(ctx context.Context, region, id string, conf Config) (string, 
 		return "", aws.ErrNoAMIInRegion
 	}
 	instanceName := "Temporary-share-logs-instance"
-	instance, err := awsSvc.LaunchInstance(ctx, ami, aws.SmallInstanceType, userdata, conf.AWSKeyName, conf.SubnetID, device)
+	instanceTags := map[string]string{
+		"Name": instanceName,
+	}
+	instance, err := awsSvc.LaunchInstance(ctx, ami, aws.SmallInstanceType, userdata, conf.AWSKeyName, conf.SubnetID, instanceTags, device)
 	if err != nil {
 		switch err {
 		case aws.ErrNotAllowed:
@@ -227,14 +230,6 @@ func awsShareLogs(ctx context.Context, region, id string, conf Config) (string, 
 			logging.Error("Instance never got ready")
 		}
 		return "", err
-	}
-	if strings.TrimSpace(instanceName) != "" {
-		err = awsSvc.TagResources(ctx, map[string]string{"Name": instanceName}, instance.ID())
-		if err == aws.ErrNotAllowed {
-			logging.Warning("Insufficient IAM permissions to tag resource, skipping Name")
-		} else if err != nil {
-			logging.Errorf("Unexpected error occured while trying to set name on instance: %s", err)
-		}
 	}
 	if instance.PublicIP() == "" {
 		logging.Info("Waiting for public IP to become available...")

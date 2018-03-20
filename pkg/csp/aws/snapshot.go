@@ -79,7 +79,10 @@ func (a *awsService) CreateSnapshot(ctx context.Context, name, sourceVolumeID st
 		logging.Error("Snapshot never became ready")
 		return nil, err
 	}
-	nameTags := map[string]string{"Name": name}
+	nameTags := map[string]string{
+		"Name":            name,
+		cliResourceTagKey: cliResourceTagValue,
+	}
 	err = a.TagResources(ctx, nameTags, res.ID())
 	if err == ErrNotAllowed {
 		logging.Warning("Insufficient IAM permissions to tag resource, skipping Name")
