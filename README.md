@@ -7,23 +7,54 @@ The latest release of **metavisor-cli** is [1.0.0](https://github.com/brkt/metav
 This CLI is implemented using [Go](https://golang.org) (version 1.10 to be specific). Go must be installed in order to compile the CLI. If you don't have Go installed, every release of the CLI is also accompanied by pre-compiled binaries for Darwin (macOS), Linux, FreeBSD, OpenBSD, and Windows which don't have any additional dependenices. To get the correct dependency versions when compiling, make sure to use the depedency management tool `dep`.
 
 ## Installation
-Start by either compiling the CLI from the source code, or grab a pre-compiled binary from the latest release of the CLI. To compile the CLI yourself, first make sure your Go environment is properly setup and that you cloned this project to `$GOPATH/src/github.com/brkt/metavisor-cli`, then run:
+The CLI can be installed and used by either compiling a binary from the source code by yourself, or by grabbing one of the pre-compiled binaries from the latest release of the CLI. Please follow the instructions below on how to do either of this.
+
+### Install from source code
+In order to compile the source code yourself, you either need to have Docker installed or you need a full Go environment properly setup. The dependency management tool `dep` is also required to compile without the use of Docker. Make sure that this project is cloned to `$GOPATH/src/github.com/brkt/metavisor-cli` so that dependencies are properly resolved, then run:
 ```
 $ dep ensure
 $ go build cmd/metavisor.go
 ```
-OR run
+OR run:
 ```
 $ make build
 ```
-OR you can also build the CLI using Docker, to avoid having to install Go and `dep`, simply run:
+Or if you want to compile using Docker, run:
 ```
 $ make docker-build
 ```
-If you instead decide to grab a binary from the releases page, make sure to get the one built for your system (e.g. get metavisor-darwin if you're on macOS).
+After you have a compiled binary of the CLI, simply put it somewhere in your `$PATH` and you're ready to start using it. Try it out by running `metavisor version` (assuming you named the binary `metavisor`).
 
+### Install from binary
+If you decide you don't want to compile the source code yourself, there are pre-compiled binaries attached to every release. Make sure you grab the binary that is built for your system (e.g. get metavisor-darwin if you're on macOS). The steps for all platforms should be similar:
 
-After you have a compiled binary of the CLI, simply put it somewhere in your `$PATH` and you're ready to start using it. Try it out by running `metavisor version`.
+1) Download the binary
+2) Make sure the binary is executable
+3) Put the binary somewhere in your `$PATH`
+
+Below follow some simple examples on how to do this on major platforms.
+#### Linux
+```
+$ curl -L -o ./metavisor https://github.com/brkt/metavisor-cli/releases/download/v1.0.0/metavisor-linux
+$ chmod +x ./metavisor
+$ sudo mv ./metavisor /usr/local/bin/metavisor
+```
+
+#### macOS
+```
+$ curl -L -o ./metavisor https://github.com/brkt/metavisor-cli/releases/download/v1.0.0/metavisor-darwin
+$ chmod +x ./metavisor
+$ sudo mv ./metavisor /usr/local/bin/metavisor
+```
+
+#### Windows
+If you have `curl` installed, download by running:
+```
+$ curl -L -o ./metavisor.exe https://github.com/brkt/metavisor-cli/releases/download/v1.0.0/metavisor-windows.exe
+```
+or, simply download by using this link: [Download CLI](https://github.com/brkt/metavisor-cli/releases/download/v1.0.0/metavisor-windows.exe). 
+
+Finally, add the binary to your `$PATH`.
 
 ## Usage
 Assuming you have the CLI installed and available in your `$PATH` as `metavisor`, you can find all available commands as well as their corresponding parameters by running:
