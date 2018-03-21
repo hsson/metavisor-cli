@@ -66,7 +66,7 @@ var (
 
 	// ErrInvalidMetavisorVersion is returned if trying to specify a metavisor version with
 	// --metavisor-version which doesn't exist
-	ErrInvalidMetavisorVersion = errors.New("specified metavisor version doesn't exist")
+	ErrInvalidMetavisorVersion = errors.New("specified metavisor version doesn't exist, use the\"list\" command to find available versions")
 )
 
 // Instance will wrap a given instance with the Metavisor. The specified
