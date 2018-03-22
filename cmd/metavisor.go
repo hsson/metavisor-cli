@@ -8,10 +8,10 @@ import (
 	"os/signal"
 	"sync"
 
-	"github.com/brkt/metavisor-cli/pkg/logging"
-	"github.com/brkt/metavisor-cli/pkg/mv"
-	"github.com/brkt/metavisor-cli/pkg/mv/share"
-	"github.com/brkt/metavisor-cli/pkg/mv/wrap"
+	"github.com/immutable-systems/metavisor-cli/pkg/logging"
+	"github.com/immutable-systems/metavisor-cli/pkg/mv"
+	"github.com/immutable-systems/metavisor-cli/pkg/mv/share"
+	"github.com/immutable-systems/metavisor-cli/pkg/mv/wrap"
 
 	"gopkg.in/alecthomas/kingpin.v2"
 )
