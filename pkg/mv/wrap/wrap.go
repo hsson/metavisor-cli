@@ -63,6 +63,10 @@ var (
 
 	// ErrBadUserdata is returned if userdata could not be generated
 	ErrBadUserdata = errors.New("could not generate userdata for instance")
+
+	// ErrInvalidMetavisorVersion is returned if trying to specify a metavisor version with
+	// --metavisor-version which doesn't exist
+	ErrInvalidMetavisorVersion = errors.New("specified metavisor version doesn't exist, use the\"list\" command to find available versions")
 )
 
 // Instance will wrap a given instance with the Metavisor. The specified
@@ -161,7 +165,8 @@ func getAMIForVersion(ctx context.Context, version, region string) (string, erro
 	mapping, err := mv.GetImagesForVersionAWS(ctx, version)
 	if err != nil {
 		logging.Error("Could not find AMIs for the specified MV version")
-		return "", err
+		logging.Debugf("Got error when trying to get MV AMI: %s", err)
+		return "", ErrInvalidMetavisorVersion
 	}
 	ami, exist := mapping[region]
 	if !exist {
