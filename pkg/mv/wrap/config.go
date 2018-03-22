@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/brkt/metavisor-cli/pkg/logging"
-	"github.com/brkt/metavisor-cli/pkg/userdata"
+	"github.com/immutable-systems/metavisor-cli/pkg/logging"
+	"github.com/immutable-systems/metavisor-cli/pkg/userdata"
 )
 
 const (

@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/brkt/metavisor-cli/pkg/logging"
+	"github.com/immutable-systems/metavisor-cli/pkg/logging"
 )
 
 type volume struct {

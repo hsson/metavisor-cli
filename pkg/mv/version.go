@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/brkt/metavisor-cli/pkg/logging"
+	"github.com/immutable-systems/metavisor-cli/pkg/logging"
 )
 
 const (

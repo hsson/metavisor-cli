@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brkt/metavisor-cli/pkg/csp/aws"
-	"github.com/brkt/metavisor-cli/pkg/logging"
-	"github.com/brkt/metavisor-cli/pkg/mv"
-	"github.com/brkt/metavisor-cli/pkg/scp"
+	"github.com/immutable-systems/metavisor-cli/pkg/csp/aws"
+	"github.com/immutable-systems/metavisor-cli/pkg/logging"
+	"github.com/immutable-systems/metavisor-cli/pkg/mv"
+	"github.com/immutable-systems/metavisor-cli/pkg/scp"
 )
 
 const (
