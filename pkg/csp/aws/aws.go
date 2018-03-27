@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/immutable-systems/metavisor-cli/pkg/logging"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
@@ -78,6 +80,8 @@ var (
 	ErrRequiresSubnet = errors.New("a subnet ID must be specified to launch instance")
 	// ErrInvalidSubnetID is returned if a specified subnet ID does not work
 	ErrInvalidSubnetID = errors.New("the specified subnet is not valid")
+	// ErrAmbigiousInstanceRegion is returned if an instance ID was found in multiple regions
+	ErrAmbigiousInstanceRegion = errors.New("could not automatically determine instance region, please specify one explicitly")
 )
 
 var validVolumeTypes = []string{"gp2", "io1", "st1", "sc1", "standard"}
@@ -243,7 +247,7 @@ func New(region string, iamConf *IAMConfig) (Service, error) {
 	if iamConf != nil && strings.TrimSpace(iamConf.RoleARN) != "" {
 		creds, err = assumeIAMRole(sess, *iamConf)
 		if err != nil {
-			logging.Error("Failed to assume IAM role")
+			logging.Debug("Failed to assume IAM role")
 			return nil, err
 		}
 	}
@@ -257,6 +261,75 @@ func New(region string, iamConf *IAMConfig) (Service, error) {
 		service.client = ec2.New(sess)
 	}
 	return service, nil
+}
+
+// FindInstanceRegion will look through all regions in an attempt to find a speciifed
+// instance. If it finds the same instance ID in multiple regions, an error will be
+// returned, same happens if it's not found in any region.
+func FindInstanceRegion(instanceID string, iamConfig *IAMConfig) (string, error) {
+	if !IsInstanceID(instanceID) {
+		return "", ErrInvalidInstanceID
+	}
+	regions, exists := endpoints.RegionsForService(endpoints.DefaultPartitions(), endpoints.AwsPartitionID, endpoints.Ec2ServiceID)
+	if !exists {
+		logging.Debug("Failed to automatically fetch EC2 regions")
+		return "", ErrAmbigiousInstanceRegion
+	}
+	foundRegions := []string{}
+	var lock sync.Mutex
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var wg sync.WaitGroup
+	var outsideErr error
+	for regionID := range regions {
+		wg.Add(1)
+		go func(region string) {
+			defer wg.Done()
+			if outsideErr != nil {
+				// Something else already failed, no need to continue
+				return
+			}
+			logging.Debugf("Trying to find instance in region %s", region)
+			svc, err := New(region, iamConfig)
+			if err != nil {
+				cancel()
+				outsideErr = err
+				return
+			}
+			_, err = svc.GetInstance(ctx, instanceID)
+			// Ignore instance non existing error, it just means it's not in this region
+			if err != nil && err != ErrInstanceNonExisting {
+				cancel()
+				outsideErr = err
+				return
+			} else if err == ErrInstanceNonExisting {
+				// Skip region
+				return
+			}
+			logging.Debugf("Instance with ID %s found in region %s", instanceID, region)
+			lock.Lock()
+			foundRegions = append(foundRegions, region)
+			lock.Unlock()
+		}(regionID)
+	}
+	wg.Wait()
+	if outsideErr != nil {
+		if outsideErr == ErrInvalidARN {
+			logging.Error("Failed to assume IAM role")
+			return "", outsideErr
+		}
+		logging.Debugf("Got unexpected error while trying to find instance's region: %v", outsideErr)
+		return "", outsideErr
+	}
+	if len(foundRegions) == 0 {
+		logging.Debug("No regions found for specified instance ID")
+		return "", ErrInstanceNonExisting
+	}
+	if len(foundRegions) > 1 {
+		logging.Debugf("Found instance ID in %d regions: %s", len(foundRegions), foundRegions)
+		return "", ErrAmbigiousInstanceRegion
+	}
+	return foundRegions[0], nil
 }
 
 func assumeIAMRole(sess *session.Session, conf IAMConfig) (*credentials.Credentials, error) {
@@ -294,10 +367,10 @@ func assumeIAMRole(sess *session.Session, conf IAMConfig) (*credentials.Credenti
 	if _, err := creds.Get(); err != nil {
 		aerr, ok := err.(awserr.Error)
 		if ok && aerr.Code() == accessDeniedErrorCode {
-			logging.Error(aerr.Message())
+			logging.Debug(aerr.Message())
 			return nil, ErrNotAllowed
 		} else if ok {
-			logging.Error(aerr.Message())
+			logging.Debug(aerr.Message())
 			return nil, ErrInvalidARN
 		}
 		logging.Debugf("Could not assume role: %s", err)

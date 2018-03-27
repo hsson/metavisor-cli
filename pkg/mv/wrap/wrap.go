@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/immutable-systems/metavisor-cli/pkg/csp/aws"
 	"github.com/immutable-systems/metavisor-cli/pkg/logging"
@@ -80,22 +81,38 @@ func Instance(ctx context.Context, region, id string, conf Config) (string, erro
 	res := make(chan mv.MaybeString, 1)
 
 	go func() {
-		service, err := aws.New(region, &aws.IAMConfig{
+		iamConf := &aws.IAMConfig{
 			RoleARN:      conf.IAMRoleARN,
 			MFADeviceARN: conf.IAMDeviceARN,
 			MFACode:      conf.IAMCode,
-		})
-		if err != nil {
-			res <- mv.MaybeString{
-				Result: "",
-				Error:  err,
+		}
+		if strings.TrimSpace(region) == "" {
+			// If no region is specified for the wrap instance command, the CLI
+			// will try to figure it out. This is possible since the instance ID
+			// should be locally unique across regions within the current account,
+			// especially for a limited time frame
+			logging.Info("No region was specified, attempting to find it automatically")
+			reg, err := aws.FindInstanceRegion(id, iamConf)
+			if err != nil {
+				if err == aws.ErrAmbigiousInstanceRegion {
+					logging.Warning("Please specify instance region with: --region")
+				}
+				res <- mv.MaybeString{Result: "", Error: err}
+				return
 			}
+			logging.Infof("Found instance in region %s", reg)
+			region = reg
+		}
+		service, err := aws.New(region, iamConf)
+		if err != nil {
+			if err == aws.ErrInvalidARN {
+				logging.Error("Failed to assume IAM role")
+			}
+			res <- mv.MaybeString{Result: "", Error: err}
+			return
 		}
 		inst, err := awsWrapInstance(ctx, service, region, id, conf)
-		res <- mv.MaybeString{
-			Result: inst,
-			Error:  err,
-		}
+		res <- mv.MaybeString{Result: inst, Error: err}
 	}()
 	select {
 	case <-ctx.Done():
@@ -123,17 +140,14 @@ func Image(ctx context.Context, region, id string, conf Config) (string, error) 
 			MFACode:      conf.IAMCode,
 		})
 		if err != nil {
-			res <- mv.MaybeString{
-				Result: "",
-				Error:  err,
+			if err == aws.ErrInvalidARN {
+				logging.Error("Failed to assume IAM role")
 			}
-		} else {
-			img, err := awsWrapImage(ctx, service, region, id, conf)
-			res <- mv.MaybeString{
-				Result: img,
-				Error:  err,
-			}
+			res <- mv.MaybeString{Result: "", Error: err}
+			return
 		}
+		img, err := awsWrapImage(ctx, service, region, id, conf)
+		res <- mv.MaybeString{Result: img, Error: err}
 	}()
 
 	select {
