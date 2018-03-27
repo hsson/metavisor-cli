@@ -9,7 +9,13 @@ The latest release of **metavisor-cli** is [1.0.1](https://github.com/immutable-
 This CLI is implemented using [Go](https://golang.org) (version 1.10 to be specific). Go must be installed in order to compile the CLI. If you don't have Go installed, every release of the CLI is also accompanied by pre-compiled binaries for Darwin (macOS), Linux, FreeBSD, OpenBSD, and Windows which don't have any additional dependenices. To get the correct dependency versions when compiling, make sure to use the depedency management tool `dep`.
 
 ## Installation
-The CLI can be installed and used by either compiling a binary from the source code by yourself, or by grabbing one of the pre-compiled binaries from the latest release of the CLI. Please follow the instructions below on how to do either of this.
+The CLI can be installed and used by either compiling a binary from the source code by yourself, or by grabbing one of the pre-compiled binaries from the latest release of the CLI. Additionally, the package manager Homebrew can be used. Please follow the instructions below on how to do either of this.
+
+### Install using Homebrew
+If you're using macOS and have Homebrew setup, the CLI can be installed with this simple command:
+```
+$ brew install immutable-systems/core/metavisor
+```
 
 ### Install from source code
 In order to compile the source code yourself, you either need to have Docker installed or you need a full Go environment properly setup. The dependency management tool `dep` is also required to compile without the use of Docker. Make sure that this project is cloned to `$GOPATH/src/github.com/immutable-systems/metavisor-cli` so that dependencies are properly resolved, then run:
