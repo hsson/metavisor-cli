@@ -45,7 +45,7 @@ var (
 
 	// AWS Wrap an instance
 	awsWrapInstance        = awsCommand.Command("wrap-instance", "Wrap a running instance with Metavisor")
-	awsWrapInstanceRegion  = awsWrapInstance.Flag("region", fmt.Sprintf("The AWS region to look for the instance in (overrides $%s)", envAWSRegion)).Required().Envar(envAWSRegion).String()
+	awsWrapInstanceRegion  = awsWrapInstance.Flag("region", fmt.Sprintf("The AWS region to look for the instance in (overrides $%s)", envAWSRegion)).Envar(envAWSRegion).String()
 	awsWrapInstanceToken   = awsWrapInstance.Flag("token", fmt.Sprintf("Launch token used to identify the Metavisor (overrides $%s)", envLaunchToken)).Required().Envar(envLaunchToken).String() // TODO: Make non-required
 	awsWrapInstanceVersion = awsWrapInstance.Flag("metavisor-version", "Which version of the MV to use").PlaceHolder("VERSION").String()
 	awsWrapInstanceAMI     = awsWrapInstance.Flag("metavisor-image", "AMI ID of MV to use, must be in correct region").Hidden().PlaceHolder("AMI-ID").String()
