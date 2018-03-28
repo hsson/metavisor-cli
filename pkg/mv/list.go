@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 
-	"github.com/immutable-systems/metavisor-cli/pkg/logging"
+	"github.com/immutable/metavisor-cli/pkg/logging"
 )
 
 // MetavisorVersions is a slice of MetavisorVersion

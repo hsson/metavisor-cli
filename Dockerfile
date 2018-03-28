@@ -3,10 +3,10 @@ FROM golang:1.10-alpine3.7
 RUN apk -U upgrade && apk add --no-cache -U git
 
 
-RUN mkdir -p $GOPATH/src/github.com/immutable-systems/metavisor-cli
+RUN mkdir -p $GOPATH/src/github.com/immutable/metavisor-cli
 RUN mkdir /app
-ADD . $GOPATH/src/github.com/immutable-systems/metavisor-cli/
-WORKDIR $GOPATH/src/github.com/immutable-systems/metavisor-cli
+ADD . $GOPATH/src/github.com/immutable/metavisor-cli/
+WORKDIR $GOPATH/src/github.com/immutable/metavisor-cli
 
 RUN go get github.com/golang/dep/...
 
