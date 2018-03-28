@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/immutable-systems/metavisor-cli/pkg/mv"
-
-	"github.com/immutable-systems/metavisor-cli/pkg/logging"
-
-	"github.com/immutable-systems/metavisor-cli/pkg/csp/aws"
+	"github.com/immutable/metavisor-cli/pkg/csp/aws"
+	"github.com/immutable/metavisor-cli/pkg/logging"
+	"github.com/immutable/metavisor-cli/pkg/mv"
 )
 
 const awsUserDataTemplate = `#!/bin/bash

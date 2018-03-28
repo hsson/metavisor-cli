@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/immutable-systems/metavisor-cli/pkg/logging"
+	"github.com/immutable/metavisor-cli/pkg/logging"
 )
 
 const (

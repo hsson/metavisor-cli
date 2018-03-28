@@ -1,9 +1,9 @@
-[![Build Status](https://travis-ci.org/immutable-systems/metavisor-cli.svg?branch=master)](https://travis-ci.org/immutable-systems/metavisor-cli)
+[![Build Status](https://travis-ci.org/immutable/metavisor-cli.svg?branch=master)](https://travis-ci.org/immutable/metavisor-cli)
 
 # metavisor-cli
 The `metavisor-cli` is a command-line interface to easily deploy cloud instances with the Metavisor.
 
-The latest release of **metavisor-cli** is [1.0.1](https://github.com/immutable-systems/metavisor-cli/releases/latest).
+The latest release of **metavisor-cli** is [1.0.1](https://github.com/immutable/metavisor-cli/releases/latest).
 
 ## Requirements
 This CLI is implemented using [Go](https://golang.org) (version 1.10 to be specific). Go must be installed in order to compile the CLI. If you don't have Go installed, every release of the CLI is also accompanied by pre-compiled binaries for Darwin (macOS), Linux, FreeBSD, OpenBSD, and Windows which don't have any additional dependenices. To get the correct dependency versions when compiling, make sure to use the depedency management tool `dep`.
@@ -14,11 +14,11 @@ The CLI can be installed and used by either compiling a binary from the source c
 ### Install using Homebrew
 If you're using macOS and have Homebrew setup, the CLI can be installed with this simple command:
 ```
-$ brew install immutable-systems/core/metavisor
+$ brew install immutable/core/metavisor
 ```
 
 ### Install from source code
-In order to compile the source code yourself, you either need to have Docker installed or you need a full Go environment properly setup. The dependency management tool `dep` is also required to compile without the use of Docker. Make sure that this project is cloned to `$GOPATH/src/github.com/immutable-systems/metavisor-cli` so that dependencies are properly resolved, then run:
+In order to compile the source code yourself, you either need to have Docker installed or you need a full Go environment properly setup. The dependency management tool `dep` is also required to compile without the use of Docker. Make sure that this project is cloned to `$GOPATH/src/github.com/immutable/metavisor-cli` so that dependencies are properly resolved, then run:
 ```
 $ dep ensure
 $ go build cmd/metavisor.go
@@ -43,14 +43,14 @@ If you decide you don't want to compile the source code yourself, there are pre-
 Below follow some simple examples on how to do this on major platforms.
 #### Linux
 ```
-$ curl -L -o ./metavisor https://github.com/immutable-systems/metavisor-cli/releases/download/v1.0.1/metavisor-linux
+$ curl -L -o ./metavisor https://github.com/immutable/metavisor-cli/releases/download/v1.0.1/metavisor-linux
 $ chmod +x ./metavisor
 $ sudo mv ./metavisor /usr/local/bin/metavisor
 ```
 
 #### macOS
 ```
-$ curl -L -o ./metavisor https://github.com/immutable-systems/metavisor-cli/releases/download/v1.0.1/metavisor-darwin
+$ curl -L -o ./metavisor https://github.com/immutable/metavisor-cli/releases/download/v1.0.1/metavisor-darwin
 $ chmod +x ./metavisor
 $ sudo mv ./metavisor /usr/local/bin/metavisor
 ```
@@ -58,9 +58,9 @@ $ sudo mv ./metavisor /usr/local/bin/metavisor
 #### Windows
 If you have `curl` installed, download by running:
 ```
-$ curl -L -o ./metavisor.exe https://github.com/immutable-systems/metavisor-cli/releases/download/v1.0.1/metavisor-windows.exe
+$ curl -L -o ./metavisor.exe https://github.com/immutable/metavisor-cli/releases/download/v1.0.1/metavisor-windows.exe
 ```
-or, simply download by using this link: [Download CLI](https://github.com/immutable-systems/metavisor-cli/releases/download/v1.0.1/metavisor-windows.exe). 
+or, simply download by using this link: [Download CLI](https://github.com/immutable/metavisor-cli/releases/download/v1.0.1/metavisor-windows.exe). 
 
 Finally, add the binary to your `$PATH`.
 
