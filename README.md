@@ -79,6 +79,9 @@ $ metavisor aws wrap-instance --region=us-west-2 --token=$YOUR_LAUNCH_TOKEN i-fo
 ```
 Notice the `--token` argument, where a so-called launch token must be specified (in this case saved in the `$YOUR_LAUNCH_TOKEN` environment variable). The launch token is required in order to allow the Metavisor to communicate with the [Metavisor Director Console](https://mgmt.brkt.com). You can get a launch token by logging into your account in the [Metavisor Director Console](https://mgmt.brkt.com) and navigating to the `Generate Userdata` section of the `Settings` tab, and then clicking: `Generate --> OK --> COPY TOKEN ONLY`.
 
+### AWS Credentials
+In order for the CLI to work properly, you need to have AWS credentials properly setup. This is done in the same way as for the official AWS CLI, and typically involves either specifying the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, or by adding an AWS configuration in `~/.aws/config`. For more detials on how to setup AWS credentials, take a look at the [getting started guide for the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html). Even though the Metavisor CLI doesn't depend on the AWS CLI itself, the AWS credentials setup process is the same.
+
 ### AWS Permissions
 The CLI requires a set of IAM permissions in EC2 in order to work properly. This is required to get the Metavisor up and running in your AWS account. An example policy template with the minimum permission requirements can be found in the `policy_template.json` file. If you attach this policy to an IAM role, that role can then be used by specifing the `--iam` flag in the CLI. Here is an example of wrapping an instance with the role `mv-cli-role` (assuming your AWS account ID is `123456789012`):
 ```
