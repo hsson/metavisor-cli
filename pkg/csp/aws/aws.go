@@ -46,6 +46,9 @@ const (
 )
 
 var (
+	// ErrNoAWSCreds is returned if no valid AWS creds could be loaded
+	// either from environment variables or ~/.aws/config
+	ErrNoAWSCreds = errors.New("no valid AWS credentials present")
 	// ErrNotAllowed is returned if the current user does not have enough
 	// IAM permissions to perform a certain action
 	ErrNotAllowed = errors.New("insufficient IAM permissions")
@@ -242,6 +245,11 @@ func New(region string, iamConf *IAMConfig) (Service, error) {
 	})
 	if err != nil {
 		return nil, err
+	}
+	if _, err := sess.Config.Credentials.Get(); err != nil {
+		logging.Debugf("Invalid AWS credentials: %v", err)
+		logging.Error("Could not load any valid AWS credentials from environment or AWS config file")
+		return nil, ErrNoAWSCreds
 	}
 	var creds *credentials.Credentials
 	if iamConf != nil && strings.TrimSpace(iamConf.RoleARN) != "" {
