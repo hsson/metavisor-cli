@@ -17,6 +17,7 @@ package wrap
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/immutable/metavisor-cli/pkg/csp/aws"
@@ -141,6 +142,13 @@ func awsWrapImage(ctx context.Context, awsSvc aws.Service, region, id string, co
 	ami, err := awsSvc.CreateImage(ctx, instID, name, desc)
 	if err != nil {
 		logging.Error("Failed to create new AMI")
+		if strings.Contains(err.Error(), "not in state 'running' or 'stopped'") {
+			// This errors means that the MV started shutting the instance down.
+			// In 90% of the cases this is because of an invalid token and the MV
+			// can't communicate with Yeti.
+			logging.Debugf("Got AWS error while creating AMI: %v", err)
+			return "", ErrMetavisorShuttingDown
+		}
 		return "", err
 	}
 	logging.Infof("Created AMI: %s", ami)
