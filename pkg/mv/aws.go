@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	prodBucketName   = "solo-brkt-prod-net"
+	prodBucketName   = "metavisor-prod-net"
 	prodBucketRegion = "us-west-2"
 	mvPrefix         = "metavisor"
 

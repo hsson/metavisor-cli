@@ -50,13 +50,12 @@ func FormatMetavisors(mvs MetavisorVersions, withJSON bool) (string, error) {
 	var s bytes.Buffer
 	for i := range mvs.Versions {
 		if mvs.Versions[i] == mvs.Latest {
-			s.WriteString(fmt.Sprintf("%s (latest)\n", mvs.Versions[i]))
+			s.WriteString(fmt.Sprintf("%s (latest)", mvs.Versions[i]))
 		} else {
-			if i == len(mvs.Versions)-1 {
-				s.WriteString(mvs.Versions[i])
-			} else {
-				s.WriteString(fmt.Sprintf("%s\n", mvs.Versions[i]))
-			}
+			s.WriteString(mvs.Versions[i])
+		}
+		if i < len(mvs.Versions)-1 {
+			s.WriteString("\n")
 		}
 	}
 	return s.String(), nil
