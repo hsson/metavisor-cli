@@ -81,7 +81,12 @@ var (
 
 	// ErrInvalidMetavisorVersion is returned if trying to specify a metavisor version with
 	// --metavisor-version which doesn't exist
-	ErrInvalidMetavisorVersion = errors.New("specified metavisor version doesn't exist, use the\"list\" command to find available versions")
+	ErrInvalidMetavisorVersion = errors.New("specified metavisor version doesn't exist, use the \"list\" command to find available versions")
+
+	// ErrMetavisorShuttingDown is returned when the instance is starting to shut itself down right after
+	// being wrapped with MV. This is in 90% of the cases because the MV can't communicate with Yeti,
+	// and thus shuts itself down — this is usually a sign of having used a bad launch token.
+	ErrMetavisorShuttingDown = errors.New("the metavisor started shutting itself and the instance down. In most cases, this is caused by using an invalid Launch token — please verify that your Launch token is correct and try again")
 )
 
 // Instance will wrap a given instance with the Metavisor. The specified
