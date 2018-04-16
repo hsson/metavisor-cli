@@ -6,7 +6,7 @@ The `metavisor-cli` is a command-line interface to easily deploy cloud instances
 The latest release of **metavisor-cli** is [1.0.1](https://github.com/immutable/metavisor-cli/releases/latest).
 
 ## Requirements
-This CLI is implemented using [Go](https://golang.org) (version 1.10 to be specific). Go must be installed in order to compile the CLI. If you don't have Go installed, every release of the CLI is also accompanied by pre-compiled binaries for Darwin (macOS), Linux, FreeBSD, OpenBSD, and Windows which don't have any additional dependenices. To get the correct dependency versions when compiling, make sure to use the depedency management tool `dep`.
+This CLI is implemented using [Go](https://golang.org) (version 1.10 to be specific). Go must be installed in order to compile the CLI. If you don't have Go installed, every release of the CLI is also accompanied by pre-compiled binaries for Darwin (macOS), Linux, FreeBSD, OpenBSD, and Windows which don't have any additional dependencies. To get the correct dependency versions when compiling, make sure to use the dependency management tool `dep`.
 
 ## Installation
 The CLI can be installed and used by either compiling a binary from the source code by yourself, or by grabbing one of the pre-compiled binaries from the latest release of the CLI. Additionally, the package manager Homebrew can be used. Please follow the instructions below on how to do either of this.
@@ -27,7 +27,7 @@ OR run:
 ```
 $ make build
 ```
-Or if you want to compile using Docker, run:
+OR if you want to compile using Docker, run:
 ```
 $ make docker-build
 ```
@@ -80,12 +80,12 @@ $ metavisor aws wrap-instance --region=us-west-2 --token=$YOUR_LAUNCH_TOKEN i-fo
 Notice the `--token` argument, where a so-called launch token must be specified (in this case saved in the `$YOUR_LAUNCH_TOKEN` environment variable). The launch token is required in order to allow the Metavisor to communicate with the [Metavisor Director Console](https://mgmt.brkt.com). You can get a launch token by logging into your account in the [Metavisor Director Console](https://mgmt.brkt.com) and navigating to the `Generate Userdata` section of the `Settings` tab, and then clicking: `Generate --> OK --> COPY TOKEN ONLY`.
 
 ### AWS Credentials
-In order for the CLI to work properly, you need to have AWS credentials properly setup. This is done in the same way as for the official AWS CLI, and typically involves either specifying the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, or by adding an AWS configuration in `~/.aws/config`. For more detials on how to setup AWS credentials, take a look at the [getting started guide for the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html). Even though the Metavisor CLI doesn't depend on the AWS CLI itself, the AWS credentials setup process is the same.
+In order for the CLI to work properly, you need to have AWS credentials properly setup. This is done in the same way as for the official AWS CLI, and typically involves either specifying the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, or by adding an AWS configuration in `~/.aws/config`. For more details on how to setup AWS credentials, take a look at the [getting started guide for the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html). Even though the Metavisor CLI doesn't depend on the AWS CLI itself, the AWS credentials setup process is the same.
 
 ### AWS Permissions
 The CLI requires a set of IAM permissions in EC2 in order to work properly. This is required to get the Metavisor up and running in your AWS account. An example policy template with the minimum permission requirements can be found in the `policy_template.json` file. These permissions must be present no matter which method you choose to authenticate against AWS (either directly in the credentials used or in a role that gets assumed using the credentials).
 
- As a side note; if your credentials allow you to assume a certain role and you would prefer the CLI to use this role for a specific command, this can be achived by using the `--iam` flag in the CLI. Here is an example of wrapping an instance with the role `mv-cli-role` (assuming your AWS account ID is `123456789012`):
+As a side note; if your credentials allow you to assume a certain role and you would prefer the CLI to use this role for a specific command, this can be achived by using the `--iam` flag in the CLI. Here is an example of wrapping an instance with the role `mv-cli-role` (assuming your AWS account ID is `123456789012`):
 ```
 $ export YOUR_LAUNCH_TOKEN=<your launch token from Metavisor Director Console>
 $ export ROLE=arn:aws:iam::123456789012:role/mv-cli-role
