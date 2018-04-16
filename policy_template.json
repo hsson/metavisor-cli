@@ -43,6 +43,22 @@
                     "ec2:ResourceTag/metavisor-cli": "true"
                 }
             }
+        },
+        {
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": [
+                "arn:aws:s3:::solo-brkt-prod-net",
+                "arn:aws:s3:::metavisor-prod-net"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": ["s3:GetObject"],
+            "Resource": [
+                "arn:aws:s3:::solo-brkt-prod-net/*",
+                "arn:aws:s3:::metavisor-prod-net/*"
+            ]
         }
     ]
 }
