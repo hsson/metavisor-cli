@@ -247,11 +247,14 @@ func awsShareLogs(ctx context.Context, region, id string, conf Config) (string, 
 	}
 	if instance.PublicIP() == "" {
 		logging.Info("Waiting for public IP to become available...")
-		instance, err = awsAwaitPublicIP(ctx, instance.ID(), awsSvc)
+		newInstance, err := awsAwaitPublicIP(ctx, instance.ID(), awsSvc)
 		if err != nil {
 			// Instance has no public IP, can't continue...
+			logging.Debugf("Instance never got a public IP: %v", err)
+			logging.Error("Temporary instance doesn't have a public IP, check your subnet/VPC")
 			return "", err
 		}
+		instance = newInstance
 	}
 
 	scpConfig := scp.Config{
