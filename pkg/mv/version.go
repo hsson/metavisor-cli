@@ -25,7 +25,7 @@ import (
 
 const (
 	// CLIVersion is the current version of the CLI
-	CLIVersion = "1.0.2pre1"
+	CLIVersion = "1.0.2"
 
 	outputTemplate = "CLI Version:\t%s\nMV Version:\t%s"
 	fetchTimeout   = 2 * time.Second
